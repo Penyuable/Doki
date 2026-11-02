@@ -1,0 +1,157 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  username       String    @unique
+  passwordHash   String
+  gold           Int       @default(1000)
+  gems           Int       @default(50)
+  level          Int       @default(1)
+  xp             Int       @default(0)
+  wins           Int       @default(0)
+  losses         Int       @default(0)
+  draws          Int       @default(0)
+  pityCounter    Int       @default(0)
+  dailyStreak    Int       @default(0)
+  lastDailyAt    DateTime?
+  lastFirstWinAt DateTime?
+  activeDeckId   String?   @unique
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  inventory     InventoryCard[]
+  decks         Deck[]
+  pulls         GachaPull[]
+  matches       Match[]
+  refreshTokens RefreshToken[]
+
+  @@index([createdAt])
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  familyId  String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+}
+
+model InventoryCard {
+  userId      String
+  cardId      String
+  quantity    Int      @default(1)
+  firstSeenAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, cardId])
+  @@index([cardId])
+}
+
+model GachaPull {
+  id             String   @id @default(cuid())
+  userId         String
+  batchId        String
+  idempotencyKey String?
+  cardId         String
+  rarity         String
+  source         String
+  costAmount     Int
+  catalogVersion String
+  pityBefore     Int
+  pityAfter      Int
+  wasPity        Boolean  @default(false)
+  isNew          Boolean  @default(false)
+  position       Int      @default(0)
+  createdAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, idempotencyKey])
+  @@index([userId, createdAt])
+  @@index([batchId])
+}
+
+model Deck {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  isActive  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cards DeckCard[]
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model DeckCard {
+  deckId   String
+  cardId   String
+  quantity Int
+
+  deck Deck @relation(fields: [deckId], references: [id], onDelete: Cascade)
+
+  @@id([deckId, cardId])
+}
+
+model Match {
+  id            String   @id @default(cuid())
+  userId        String
+  difficulty    String
+  outcome       String   @default("pending")
+  turns         Int      @default(0)
+  durationMs    Int      @default(0)
+  logHash       String   @default("")
+  seed          Int
+  deckSnapshot  String
+  goldAwarded   Int      @default(0)
+  xpAwarded     Int      @default(0)
+  firstWinBonus Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  reportedAt    DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, difficulty, createdAt])
+}
+
+model CatalogVersion {
+  version   String   @id
+  checksum  String
+  cardCount Int
+  payload   String
+  isActive  Boolean  @default(false)
+  fetchedAt DateTime @default(now())
+
+  @@index([isActive])
+}
+
+model TelemetryEvent {
+  id        String   @id @default(cuid())
+  userId    String?
+  name      String
+  props     String
+  createdAt DateTime @default(now())
+
+  @@index([name, createdAt])
+  @@index([userId, createdAt])
+}

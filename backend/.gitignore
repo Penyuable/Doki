@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+*.log
+
+# SQLite dev/test databases
+prisma/*.db
+prisma/*.db-journal
+prisma/*.db-wal
+prisma/*.db-shm
+
+coverage/
