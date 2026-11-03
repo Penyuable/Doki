@@ -95,8 +95,8 @@ class _AuthPageState extends State<AuthPage> {
                     final isLoading = state is AuthLoading;
                     final message = state is AuthUnauthenticated
                         ? state.sessionExpired
-                              ? strings.t('auth.sessionExpired')
-                              : state.message
+                            ? strings.t('auth.sessionExpired')
+                            : state.message
                         : null;
 
                     return AutofillGroup(
@@ -111,7 +111,9 @@ class _AuthPageState extends State<AuthPage> {
                               _isRegister
                                   ? strings.t('auth.registerCta')
                                   : strings.t('auth.welcomeBack'),
-                              style: Theme.of(context).textTheme.headlineSmall
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineSmall
                                   ?.copyWith(fontWeight: FontWeight.w800),
                             ),
                             const SizedBox(height: 6),
@@ -196,7 +198,8 @@ class _AuthPageState extends State<AuthPage> {
                               ),
                               validator: _validatePassword,
                             ),
-                            if (message != null && message.isNotEmpty) ...<Widget>[
+                            if (message != null &&
+                                message.isNotEmpty) ...<Widget>[
                               const SizedBox(height: 16),
                               _ErrorBanner(message: message),
                             ],
@@ -244,18 +247,14 @@ class _AuthPageState extends State<AuthPage> {
   Widget _brand(AppStrings strings) {
     return Row(
       children: <Widget>[
-        Container(
+        const Clay(
           width: 56,
           height: 56,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: <Color>[AppTheme.primary, AppTheme.accent],
-            ),
-          ),
-          child: const Icon(
+          radius: 22,
+          color: AppTheme.primary,
+          depth: 0.7,
+          alignment: Alignment.center,
+          child: Icon(
             Icons.auto_awesome_mosaic_rounded,
             color: Colors.white,
             size: 30,
@@ -268,9 +267,9 @@ class _AuthPageState extends State<AuthPage> {
             Text(
               strings.t('app.name'),
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w900,
-                letterSpacing: 0.6,
-              ),
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.6,
+                  ),
             ),
             Text(
               strings.t('app.tagline'),
@@ -293,10 +292,10 @@ class _ErrorBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF7F1D1D).withValues(alpha: 0.35),
+        color: AppTheme.danger.withValues(alpha: 0.35),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: const Color(0xFFF87171).withValues(alpha: 0.4),
+          color: AppTheme.danger.withValues(alpha: 0.4),
         ),
       ),
       child: Row(
@@ -305,7 +304,7 @@ class _ErrorBanner extends StatelessWidget {
           const Icon(
             Icons.error_outline_rounded,
             size: 18,
-            color: Color(0xFFFCA5A5),
+            color: AppTheme.danger,
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -313,7 +312,7 @@ class _ErrorBanner extends StatelessWidget {
               message,
               style: const TextStyle(
                 fontSize: 12.5,
-                color: Color(0xFFFCA5A5),
+                color: AppTheme.danger,
               ),
             ),
           ),

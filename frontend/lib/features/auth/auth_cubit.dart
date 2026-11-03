@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../core/config/env.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
 import '../../core/storage/app_storage.dart';
@@ -59,10 +60,10 @@ class AuthCubit extends Cubit<AuthState> {
     required AuthRepository repository,
     required ApiClient api,
     required AppStorage storage,
-  }) : _repository = repository,
-       _api = api,
-       _storage = storage,
-       super(const AuthInitial()) {
+  })  : _repository = repository,
+        _api = api,
+        _storage = storage,
+        super(const AuthInitial()) {
     _api.onSessionExpired = _onSessionExpired;
   }
 
@@ -77,6 +78,10 @@ class AuthCubit extends Cubit<AuthState> {
 
   Future<void> restore() async {
     emit(const AuthRestoring());
+    if (Env.offlineMode) {
+      await _startGuest();
+      return;
+    }
     final refresh = await _storage.readRefreshToken();
     if (refresh == null || refresh.isEmpty) {
       emit(const AuthUnauthenticated());
@@ -100,6 +105,25 @@ class AuthCubit extends Cubit<AuthState> {
       );
     } catch (_) {
       emit(const AuthUnauthenticated());
+    }
+  }
+
+  /// Mode offline: langsung masuk sebagai pemain lokal (tanpa layar login).
+  Future<void> _startGuest() async {
+    try {
+      await _repository.guest();
+      final me = await _repository.me();
+      emit(
+        AuthAuthenticated(
+          user: me.user,
+          stats: me.stats,
+          activeDeckId: me.activeDeckId,
+        ),
+      );
+    } on ApiException catch (error) {
+      emit(AuthUnauthenticated(message: error.message));
+    } catch (_) {
+      emit(const AuthUnauthenticated(message: 'Data lokal gagal dimuat.'));
     }
   }
 
@@ -196,7 +220,8 @@ class AuthCubit extends Cubit<AuthState> {
   void applyWallet(WalletModel wallet) {
     final current = state;
     if (current is AuthAuthenticated) {
-      emit(current.copyWith(user: current.user.copyWith(
+      emit(current.copyWith(
+          user: current.user.copyWith(
         gold: wallet.gold,
         gems: wallet.gems,
       )));

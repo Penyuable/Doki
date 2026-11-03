@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -55,9 +57,8 @@ class DokimonApp extends StatelessWidget {
               child: MaterialApp(
                 title: 'Dokimon',
                 debugShowCheckedModeBanner: false,
-                theme: AppTheme.dark(),
-                darkTheme: AppTheme.dark(),
-                themeMode: ThemeMode.dark,
+                theme: AppTheme.clay(),
+                themeMode: ThemeMode.light,
                 locale: Locale(settingsState.localeCode),
                 supportedLocales: AppStrings.supportedLocaleCodes
                     .map(Locale.new)
@@ -78,20 +79,50 @@ class DokimonApp extends StatelessWidget {
   }
 }
 
-class RootGate extends StatelessWidget {
-  const RootGate({super.key});
+class RootGate extends StatefulWidget {
+  const RootGate({super.key, this.minSplash = kMinSplashDuration});
+
+  /// Splash tetap tampil minimal selama ini walau sesi sudah pulih.
+  final Duration minSplash;
+
+  @override
+  State<RootGate> createState() => _RootGateState();
+}
+
+class _RootGateState extends State<RootGate> {
+  bool _splashElapsed = false;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer(widget.minSplash, () {
+      if (mounted) setState(() => _splashElapsed = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<AuthCubit, AuthState>(
       builder: (context, state) {
-        if (state is AuthAuthenticated) {
-          return const HomeShell();
+        final Widget page;
+        if (!_splashElapsed || state is AuthInitial || state is AuthRestoring) {
+          page = const SplashPage(key: ValueKey<String>('splash'));
+        } else if (state is AuthAuthenticated) {
+          page = const HomeShell(key: ValueKey<String>('home'));
+        } else {
+          page = const AuthPage(key: ValueKey<String>('auth'));
         }
-        if (state is AuthInitial || state is AuthRestoring) {
-          return const SplashPage();
-        }
-        return const AuthPage();
+        return AnimatedSwitcher(
+          duration: const Duration(milliseconds: 450),
+          child: page,
+        );
       },
     );
   }

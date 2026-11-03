@@ -147,7 +147,9 @@ class _DeckView extends StatelessWidget {
                       children: <Widget>[
                         Text(
                           strings.t('deck.title'),
-                          style: Theme.of(context).textTheme.headlineSmall
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineSmall
                               ?.copyWith(fontWeight: FontWeight.w900),
                         ),
                         Text(
@@ -161,9 +163,7 @@ class _DeckView extends StatelessWidget {
                     ),
                   ),
                   FilledButton.tonalIcon(
-                    onPressed: canCreate
-                        ? () => _openBuilder(context)
-                        : null,
+                    onPressed: canCreate ? () => _openBuilder(context) : null,
                     icon: const Icon(Icons.add_rounded, size: 18),
                     label: Text(strings.t('deck.new')),
                   ),
@@ -177,7 +177,7 @@ class _DeckView extends StatelessWidget {
                   strings.t('deck.maxDecks'),
                   style: const TextStyle(
                     fontSize: 11.5,
-                    color: Color(0xFFFBBF24),
+                    color: AppTheme.warning,
                   ),
                 ),
               ),
@@ -215,8 +215,7 @@ class _DeckView extends StatelessWidget {
                                   break;
                               }
                             },
-                            onTap: () =>
-                                _openBuilder(context, deckId: deck.id),
+                            onTap: () => _openBuilder(context, deckId: deck.id),
                           ),
                         );
                       },
@@ -245,9 +244,7 @@ class _DeckCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
-    final accent = deck.isValid
-        ? const Color(0xFF4ADE80)
-        : const Color(0xFFFBBF24);
+    final accent = deck.isValid ? AppTheme.success : AppTheme.warning;
 
     return Panel(
       padding: EdgeInsets.zero,
@@ -258,21 +255,17 @@ class _DeckCard extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(14, 12, 6, 12),
           child: Row(
             children: <Widget>[
-              Container(
+              const Clay(
                 width: 42,
                 height: 56,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: <Color>[
-                      AppTheme.primary.withValues(alpha: 0.5),
-                      AppTheme.accent.withValues(alpha: 0.25),
-                    ],
-                  ),
+                radius: 14,
+                color: AppTheme.primary,
+                depth: 0.6,
+                child: Icon(
+                  Icons.style_rounded,
+                  size: 22,
+                  color: Colors.white,
                 ),
-                child: const Icon(Icons.style_rounded, size: 22),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -308,7 +301,7 @@ class _DeckCard extends StatelessWidget {
                               style: const TextStyle(
                                 fontSize: 9,
                                 fontWeight: FontWeight.w800,
-                                color: Color(0xFFC4B5FD),
+                                color: AppTheme.primary,
                               ),
                             ),
                           ),
@@ -324,7 +317,8 @@ class _DeckCard extends StatelessWidget {
                         color: accent,
                       ),
                     ),
-                    if (!deck.isValid && deck.violations.isNotEmpty) ...<Widget>[
+                    if (!deck.isValid &&
+                        deck.violations.isNotEmpty) ...<Widget>[
                       const SizedBox(height: 3),
                       Text(
                         strings.t(
@@ -332,7 +326,7 @@ class _DeckCard extends StatelessWidget {
                         ),
                         style: const TextStyle(
                           fontSize: 10,
-                          color: Color(0xFF9AA3B2),
+                          color: AppTheme.inkSoft,
                         ),
                       ),
                     ],

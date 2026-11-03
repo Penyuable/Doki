@@ -88,7 +88,7 @@ class _GachaRevealDialogState extends State<GachaRevealDialog> {
           padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+            border: Border.all(color: AppTheme.ink.withValues(alpha: 0.08)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -99,8 +99,8 @@ class _GachaRevealDialogState extends State<GachaRevealDialog> {
                     child: Text(
                       strings.t('gacha.reveal'),
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      ),
+                            fontWeight: FontWeight.w900,
+                          ),
                     ),
                   ),
                   IconButton(
@@ -198,9 +198,8 @@ class _RevealCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final card = result.card;
-    final duration = reduceMotion
-        ? Duration.zero
-        : const Duration(milliseconds: 380);
+    final duration =
+        reduceMotion ? Duration.zero : const Duration(milliseconds: 380);
 
     return GestureDetector(
       onTap: onTap,
@@ -251,13 +250,13 @@ class _RevealCard extends StatelessWidget {
               if (result.isNew)
                 _Badge(
                   label: strings.t('gacha.new'),
-                  color: const Color(0xFF4ADE80),
+                  color: AppTheme.success,
                 ),
               if (result.wasPity) ...<Widget>[
                 const SizedBox(height: 4),
                 _Badge(
                   label: strings.t('gacha.pityHit'),
-                  color: const Color(0xFFC084FC),
+                  color: AppTheme.primary,
                 ),
               ],
               if (result.guaranteedRare) ...<Widget>[
@@ -276,25 +275,14 @@ class _RevealCard extends StatelessWidget {
 
   Widget _back(BuildContext context, Rarity rarity) {
     final color = AppTheme.rarityColor(rarity);
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: <Color>[
-            color.withValues(alpha: 0.42),
-            const Color(0xFF15131F),
-            color.withValues(alpha: 0.2),
-          ],
-        ),
-        border: Border.all(color: color.withValues(alpha: 0.55), width: 1.4),
-      ),
-      child: Center(
+    return Clay(
+      color: color,
+      radius: 22,
+      child: const Center(
         child: Icon(
           Icons.question_mark_rounded,
           size: 40,
-          color: color.withValues(alpha: 0.85),
+          color: Colors.white,
         ),
       ),
     );
@@ -323,7 +311,7 @@ class _Badge extends StatelessWidget {
         style: const TextStyle(
           fontSize: 9,
           fontWeight: FontWeight.w900,
-          color: Color(0xFF0B0A12),
+          color: AppTheme.ink,
           letterSpacing: 0.4,
         ),
       ),

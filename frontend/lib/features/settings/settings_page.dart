@@ -97,7 +97,7 @@ class SettingsPage extends StatelessWidget {
                           onChanged: cubit.setBatterySaver,
                           secondary: const Icon(
                             Icons.battery_saver_rounded,
-                            color: Color(0xFF4ADE80),
+                            color: AppTheme.success,
                           ),
                           title: Text(strings.t('settings.batterySaver')),
                           subtitle: Text(
@@ -108,7 +108,7 @@ class SettingsPage extends StatelessWidget {
                         ListTile(
                           leading: const Icon(
                             Icons.volume_off_rounded,
-                            color: Color(0xFF9AA3B2),
+                            color: AppTheme.inkSoft,
                           ),
                           title: Text(strings.t('settings.audio')),
                           subtitle: Text(strings.t('settings.audioPending')),
@@ -116,7 +116,7 @@ class SettingsPage extends StatelessWidget {
                             strings.t('settings.audioHint'),
                             style: const TextStyle(
                               fontSize: 11,
-                              color: Color(0xFF6B7280),
+                              color: AppTheme.inkFaint,
                             ),
                           ),
                         ),
@@ -131,21 +131,14 @@ class SettingsPage extends StatelessWidget {
                       children: <Widget>[
                         Row(
                           children: <Widget>[
-                            Container(
+                            const Clay(
                               width: 42,
                               height: 42,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(12),
-                                gradient: const LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: <Color>[
-                                    AppTheme.primary,
-                                    AppTheme.accent,
-                                  ],
-                                ),
-                              ),
-                              child: const Icon(
+                              radius: 16,
+                              color: AppTheme.primary,
+                              depth: 0.7,
+                              alignment: Alignment.center,
+                              child: Icon(
                                 Icons.auto_awesome_mosaic_rounded,
                                 color: Colors.white,
                                 size: 22,
@@ -184,33 +177,35 @@ class SettingsPage extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 18),
-                  SectionHeader(title: strings.t('settings.session')),
-                  Panel(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: <Widget>[
-                        Text(
-                          strings.t('settings.sessionHint'),
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                        const SizedBox(height: 12),
-                        OutlinedButton.icon(
-                          onPressed: () => _logout(context),
-                          icon: const Icon(Icons.logout_rounded, size: 18),
-                          label: Text(strings.t('profile.logout')),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xFFFCA5A5),
-                            side: BorderSide(
-                              color: const Color(
-                                0xFFF87171,
-                              ).withValues(alpha: 0.4),
+                  if (!Env.offlineMode) ...<Widget>[
+                    const SizedBox(height: 18),
+                    SectionHeader(title: strings.t('settings.session')),
+                    Panel(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: <Widget>[
+                          Text(
+                            strings.t('settings.sessionHint'),
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          const SizedBox(height: 12),
+                          OutlinedButton.icon(
+                            onPressed: () => _logout(context),
+                            icon: const Icon(Icons.logout_rounded, size: 18),
+                            label: Text(strings.t('profile.logout')),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppTheme.danger,
+                              side: BorderSide(
+                                color: const Color(
+                                  0xFFF87171,
+                                ).withValues(alpha: 0.4),
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               );
             },

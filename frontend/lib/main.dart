@@ -1,9 +1,17 @@
+import 'dart:convert';
+
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 
 import 'app.dart';
+import 'core/config/env.dart';
 import 'core/network/api_client.dart';
 import 'core/storage/app_storage.dart';
 import 'core/theme/app_theme.dart';
+import 'data/local/local_backend.dart';
+import 'data/local/local_http_adapter.dart';
+import 'data/repositories/catalog_repository.dart';
 import 'data/repositories/repositories.dart';
 import 'features/settings/settings_cubit.dart';
 
@@ -12,7 +20,10 @@ Future<void> main() async {
 
   try {
     final storage = await AppStorage.create();
-    final api = ApiClient(storage: storage);
+    final api = ApiClient(
+      storage: storage,
+      dio: Env.offlineMode ? await _offlineDio() : null,
+    );
     await api.init();
     final repositories = Repositories.create(api: api, storage: storage);
     final settings = SettingsCubit(storage);
@@ -37,6 +48,19 @@ Future<void> main() async {
   }
 }
 
+/// Dio yang dilayani backend lokal; katalog diambil dari aset bawaan.
+Future<Dio> _offlineDio() async {
+  final raw = await rootBundle.loadString(CatalogRepository.assetPath);
+  final decoded = jsonDecode(raw);
+  final catalog = <Map<String, dynamic>>[
+    if (decoded is List)
+      for (final item in decoded)
+        if (item is Map) Map<String, dynamic>.from(item),
+  ];
+  final backend = await LocalBackend.create(catalog: catalog);
+  return Dio()..httpClientAdapter = LocalHttpAdapter(backend);
+}
+
 class _BootstrapErrorApp extends StatelessWidget {
   const _BootstrapErrorApp();
 
@@ -44,7 +68,7 @@ class _BootstrapErrorApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.dark(),
+      theme: AppTheme.clay(),
       home: const Scaffold(
         body: Center(
           child: Padding(

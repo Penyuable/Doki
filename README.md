@@ -100,21 +100,38 @@ cd frontend
 flutter pub get
 flutter analyze && flutter test
 
-# Emulator Android (10.0.2.2 = localhost mesin host)
-flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8080/api/v1
+# Default: mode OFFLINE tanpa login & tanpa backend (data di perangkat)
+flutter run
+
+# Mode server (login + backend). Emulator Android (10.0.2.2 = localhost host)
+flutter run --dart-define=OFFLINE=false --dart-define=API_BASE_URL=http://10.0.2.2:8080/api/v1
 
 # Device fisik: ganti dengan IP LAN mesin backend
-flutter run --dart-define=API_BASE_URL=http://192.168.1.14:8080/api/v1
+flutter run --dart-define=OFFLINE=false --dart-define=API_BASE_URL=http://192.168.1.14:8080/api/v1
 ```
 
 > Perintah `flutter`/`dart` di mesin ini ada di `C:\flutter\bin` (belum masuk PATH).
 > Gunakan `C:\flutter\bin\flutter.bat ...`.
 
+### Ikon aplikasi
+
+Ikon Android (legacy + adaptive) dan iOS digambar dari kode (tile clay + kreatur),
+sama dengan logo di aplikasi. Setelah mengubah logo/kreatur, generate ulang:
+
+```bash
+cd frontend
+flutter test tool/generate_app_icon_test.dart
+```
+
 ### Build APK release
 
 ```bash
 cd frontend
-flutter build apk --release \
+# Offline tanpa login (default) — langsung bisa dimainkan tanpa server
+flutter build apk --release
+
+# Mode server + login
+flutter build apk --release --dart-define=OFFLINE=false \
   --dart-define=API_BASE_URL=http://192.168.1.14:8080/api/v1
 
 # hasil: frontend/build/app/outputs/flutter-apk/app-release.apk

@@ -8,6 +8,7 @@ import '../../core/ui/widgets.dart';
 import '../../data/repositories/deck_repository.dart';
 import '../../domain/models/card_model.dart';
 import '../../domain/models/deck_model.dart';
+import '../battle/battle_moves.dart';
 import '../deck/deck_builder_page.dart';
 import 'card_viewer_3d_page.dart';
 
@@ -86,7 +87,7 @@ class CardDetailPage extends StatelessWidget {
                         icon: Icons.flash_on_rounded,
                         label: strings.t('card.attack'),
                         value: '${card.attack ?? 0}',
-                        color: const Color(0xFFF97316),
+                        color: AppTheme.attack,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -95,7 +96,7 @@ class CardDetailPage extends StatelessWidget {
                         icon: Icons.favorite_rounded,
                         label: strings.t('card.hp'),
                         value: '${card.hp ?? 0}',
-                        color: const Color(0xFF34D399),
+                        color: AppTheme.success,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -104,7 +105,7 @@ class CardDetailPage extends StatelessWidget {
                         icon: Icons.shield_rounded,
                         label: strings.t('card.defense'),
                         value: '${card.defense ?? 0}',
-                        color: const Color(0xFF60A5FA),
+                        color: AppTheme.info,
                       ),
                     ),
                   ],
@@ -116,6 +117,12 @@ class CardDetailPage extends StatelessWidget {
                   value: '${card.cost}',
                   color: AppTheme.accent,
                 ),
+              const SizedBox(height: 20),
+              SectionHeader(title: strings.t('card.moves')),
+              Panel(
+                padding: const EdgeInsets.fromLTRB(8, 18, 8, 14),
+                child: MoveOrbRow(card: card),
+              ),
               const SizedBox(height: 20),
               if (card.ability != null) ...<Widget>[
                 SectionHeader(title: strings.t('card.ability')),
@@ -209,7 +216,7 @@ class CardDetailPage extends StatelessWidget {
                   card.flavorText,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     fontStyle: FontStyle.italic,
-                    color: const Color(0xFFB6B0C9),
+                    color: AppTheme.inkSoft,
                   ),
                 ),
                 const SizedBox(height: 22),
@@ -354,11 +361,11 @@ class _DeckPickerSheetState extends State<_DeckPickerSheet> {
                     trailing: deck.isValid
                         ? const Icon(
                             Icons.check_circle_rounded,
-                            color: Color(0xFF4ADE80),
+                            color: AppTheme.success,
                           )
                         : const Icon(
                             Icons.error_outline_rounded,
-                            color: Color(0xFFFBBF24),
+                            color: AppTheme.warning,
                           ),
                     onTap: () => Navigator.of(context).pop(
                       _DeckChoice(deck),
@@ -413,7 +420,7 @@ class _StatCell extends StatelessWidget {
           Text(
             label,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: const Color(0xFF9AA3B2),
+              color: AppTheme.inkSoft,
             ),
           ),
         ],
@@ -432,16 +439,16 @@ class _Tag extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
+        color: AppTheme.ink.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(color: AppTheme.ink.withValues(alpha: 0.1)),
       ),
       child: Text(
         label,
         style: const TextStyle(
           fontSize: 10.5,
           fontWeight: FontWeight.w600,
-          color: Color(0xFFC9C3DA),
+          color: AppTheme.inkSoft,
         ),
       ),
     );

@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../app_scope.dart';
 import '../../core/config/env.dart';
 import '../../core/i18n/app_strings.dart';
+import '../../core/theme/app_theme.dart';
 import '../../core/ui/widgets.dart';
 import '../auth/auth_cubit.dart';
 import '../catalog/catalog_cubit.dart';
@@ -26,8 +27,8 @@ class ShellNavigator extends InheritedWidget {
   final ValueChanged<int> select;
 
   static ShellNavigator of(BuildContext context) {
-    final navigator = context
-        .dependOnInheritedWidgetOfExactType<ShellNavigator>();
+    final navigator =
+        context.dependOnInheritedWidgetOfExactType<ShellNavigator>();
     assert(navigator != null, 'ShellNavigator tidak ditemukan');
     return navigator!;
   }
@@ -132,36 +133,65 @@ class _ShellScaffold extends StatelessWidget {
             ),
           ),
         ),
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: index,
-          onDestinationSelected: onSelect,
-          destinations: <NavigationDestination>[
-            NavigationDestination(
-              icon: const Icon(Icons.home_outlined),
-              selectedIcon: const Icon(Icons.home_rounded),
-              label: strings.t('nav.home'),
-            ),
-            NavigationDestination(
-              icon: const Icon(Icons.grid_view_outlined),
-              selectedIcon: const Icon(Icons.grid_view_rounded),
-              label: strings.t('nav.collection'),
-            ),
-            NavigationDestination(
-              icon: const Icon(Icons.style_outlined),
-              selectedIcon: const Icon(Icons.style_rounded),
-              label: strings.t('nav.deck'),
-            ),
-            NavigationDestination(
-              icon: const Icon(Icons.auto_awesome_outlined),
-              selectedIcon: const Icon(Icons.auto_awesome_rounded),
-              label: strings.t('nav.gacha'),
-            ),
-            NavigationDestination(
-              icon: const Icon(Icons.person_outline_rounded),
-              selectedIcon: const Icon(Icons.person_rounded),
-              label: strings.t('nav.profile'),
-            ),
-          ],
+        bottomNavigationBar: _GlassNavBar(
+          child: NavigationBar(
+            selectedIndex: index,
+            onDestinationSelected: onSelect,
+            destinations: <NavigationDestination>[
+              NavigationDestination(
+                icon: const Icon(Icons.home_outlined),
+                selectedIcon: const Icon(Icons.home_rounded),
+                label: strings.t('nav.home'),
+              ),
+              NavigationDestination(
+                icon: const Icon(Icons.grid_view_outlined),
+                selectedIcon: const Icon(Icons.grid_view_rounded),
+                label: strings.t('nav.collection'),
+              ),
+              NavigationDestination(
+                icon: const Icon(Icons.style_outlined),
+                selectedIcon: const Icon(Icons.style_rounded),
+                label: strings.t('nav.deck'),
+              ),
+              NavigationDestination(
+                icon: const Icon(Icons.auto_awesome_outlined),
+                selectedIcon: const Icon(Icons.auto_awesome_rounded),
+                label: strings.t('nav.gacha'),
+              ),
+              NavigationDestination(
+                icon: const Icon(Icons.person_outline_rounded),
+                selectedIcon: const Icon(Icons.person_rounded),
+                label: strings.t('nav.profile'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Kapsul navigasi clay mengambang.
+class _GlassNavBar extends StatelessWidget {
+  const _GlassNavBar({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+      child: Clay(
+        radius: 32,
+        color: AppTheme.surface,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(32),
+          child: MediaQuery.removePadding(
+            context: context,
+            removeBottom: true,
+            child: child,
+          ),
         ),
       ),
     );

@@ -198,7 +198,7 @@ class _BuilderBody extends StatelessWidget {
                   Text(
                     state.saveError!,
                     style: const TextStyle(
-                      color: Color(0xFFFCA5A5),
+                      color: AppTheme.danger,
                       fontSize: 12,
                     ),
                   ),
@@ -214,7 +214,7 @@ class _BuilderBody extends StatelessWidget {
                           const Icon(
                             Icons.info_outline_rounded,
                             size: 14,
-                            color: Color(0xFFFBBF24),
+                            color: AppTheme.warning,
                           ),
                           const SizedBox(width: 6),
                           Expanded(
@@ -222,7 +222,7 @@ class _BuilderBody extends StatelessWidget {
                               _violationText(strings, violation),
                               style: const TextStyle(
                                 fontSize: 11.5,
-                                color: Color(0xFFFBBF24),
+                                color: AppTheme.warning,
                               ),
                             ),
                           ),
@@ -440,7 +440,7 @@ class _AddCardsTabState extends State<_AddCardsTab> {
                               '×$owned',
                               style: const TextStyle(
                                 fontSize: 12,
-                                color: Color(0xFF9AA3B2),
+                                color: AppTheme.inkSoft,
                               ),
                             ),
                             const SizedBox(width: 6),
@@ -486,7 +486,7 @@ class _CardRow extends StatelessWidget {
           SizedBox(
             width: 38,
             height: 56,
-            child: CardArtwork(card: card, borderRadius: 8),
+            child: CardArtwork(card: card, borderRadius: 8, animate: false),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -510,7 +510,7 @@ class _CardRow extends StatelessWidget {
                       height: 18,
                       alignment: Alignment.center,
                       decoration: const BoxDecoration(
-                        color: Color(0xFF0E7490),
+                        color: AppTheme.accent,
                         shape: BoxShape.circle,
                       ),
                       child: Text(
@@ -533,7 +533,7 @@ class _CardRow extends StatelessWidget {
                   subtitle,
                   style: const TextStyle(
                     fontSize: 10.5,
-                    color: Color(0xFF9AA3B2),
+                    color: AppTheme.inkSoft,
                   ),
                 ),
               ],
@@ -554,7 +554,7 @@ class _Counter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = good ? const Color(0xFF4ADE80) : const Color(0xFFFBBF24);
+    final color = good ? AppTheme.success : AppTheme.warning;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
@@ -620,7 +620,7 @@ class _Curve extends StatelessWidget {
                     cost == 6 ? '6+' : '$cost',
                     style: const TextStyle(
                       fontSize: 9,
-                      color: Color(0xFF9AA3B2),
+                      color: AppTheme.inkSoft,
                     ),
                   ),
                 ],

@@ -491,7 +491,7 @@ Total ≈ 30–37 hari kerja untuk 1 developer + agent AI.
 | Q-01 | Apakah butuh crafting duplikat → Dust di MVP? | **Tidak** (P1) |
 | Q-02 | Reset harian pakai WIB atau UTC? | **WIB (UTC+7)** |
 | Q-03 | Battle boleh dilanjutkan setelah app ditutup? | **Ya, suspend lokal**, tidak lintas device |
-| Q-04 | Perlu akun tamu (guest) sebelum register? | **Tidak** |
+| Q-04 | Perlu akun tamu (guest) sebelum register? | **Dijawab 2026-11-03:** build default berjalan **offline tanpa login** (pemain lokal dibuat otomatis, progres disimpan di perangkat). Di mode ini gacha/saldo dihitung di perangkat, jadi invarian I-01/I-02 hanya berlaku untuk mode server (`OFFLINE=false`). |
 | Q-05 | Nama repo/owner GitHub final? | `<owner>/<repo>`, dikonfigurasi via env |
 
 ---

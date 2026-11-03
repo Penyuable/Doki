@@ -129,9 +129,8 @@ class _ProfilePageState extends State<ProfilePage> {
         final user = profile.user;
         final stats = profile.stats;
         final winRate = stats.winRate;
-        final winRateText = winRate == null
-            ? '—'
-            : '${(winRate * 100).toStringAsFixed(1)}%';
+        final winRateText =
+            winRate == null ? '—' : '${(winRate * 100).toStringAsFixed(1)}%';
 
         return RefreshIndicator(
           onRefresh: _refresh,
@@ -141,18 +140,13 @@ class _ProfilePageState extends State<ProfilePage> {
             children: <Widget>[
               Row(
                 children: <Widget>[
-                  Container(
+                  Clay(
                     width: 58,
                     height: 58,
+                    shape: BoxShape.circle,
+                    color: AppTheme.primary,
+                    depth: 0.7,
                     alignment: Alignment.center,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: <Color>[AppTheme.primary, AppTheme.accent],
-                      ),
-                    ),
                     child: Text(
                       user.username.isEmpty
                           ? '?'
@@ -173,7 +167,9 @@ class _ProfilePageState extends State<ProfilePage> {
                           user.username,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleLarge
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleLarge
                               ?.copyWith(fontWeight: FontWeight.w900),
                         ),
                         const SizedBox(height: 2),
@@ -239,7 +235,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       label: strings.t('outcome.win'),
                       value: stats.wins.toString(),
                       icon: Icons.emoji_events_rounded,
-                      color: const Color(0xFF4ADE80),
+                      color: AppTheme.success,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -248,7 +244,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       label: strings.t('outcome.loss'),
                       value: stats.losses.toString(),
                       icon: Icons.close_rounded,
-                      color: const Color(0xFFF87171),
+                      color: AppTheme.danger,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -257,7 +253,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       label: strings.t('outcome.draw'),
                       value: stats.draws.toString(),
                       icon: Icons.balance_rounded,
-                      color: const Color(0xFFFBBF24),
+                      color: AppTheme.warning,
                     ),
                   ),
                 ],
@@ -320,7 +316,8 @@ class _ProfilePageState extends State<ProfilePage> {
                           const SizedBox(height: 2),
                           Text(
                             profile.daily.canClaim
-                                ? _dailyRewardLabel(profile.daily.streak, strings)
+                                ? _dailyRewardLabel(
+                                    profile.daily.streak, strings)
                                 : strings.t('home.dailyClaimed'),
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
@@ -328,8 +325,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                     ),
                     FilledButton(
-                      onPressed:
-                          profile.daily.canClaim && !state.claimingDaily
+                      onPressed: profile.daily.canClaim && !state.claimingDaily
                           ? _claimDaily
                           : null,
                       child: state.claimingDaily
@@ -377,18 +373,19 @@ class _ProfilePageState extends State<ProfilePage> {
                 strings: strings,
                 onRetry: () => setState(_reloadHistory),
               ),
-              const SizedBox(height: 18),
-              OutlinedButton.icon(
-                onPressed: _logout,
-                icon: const Icon(Icons.logout_rounded, size: 18),
-                label: Text(strings.t('profile.logout')),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFFFCA5A5),
-                  side: BorderSide(
-                    color: const Color(0xFFF87171).withValues(alpha: 0.4),
+              if (!Env.offlineMode) const SizedBox(height: 18),
+              if (!Env.offlineMode)
+                OutlinedButton.icon(
+                  onPressed: _logout,
+                  icon: const Icon(Icons.logout_rounded, size: 18),
+                  label: Text(strings.t('profile.logout')),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.danger,
+                    side: BorderSide(
+                      color: AppTheme.danger.withValues(alpha: 0.4),
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
         );
@@ -434,7 +431,7 @@ class _InfoRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: <Widget>[
-        Icon(icon, size: 18, color: const Color(0xFF9AA3B2)),
+        Icon(icon, size: 18, color: AppTheme.inkSoft),
         const SizedBox(width: 10),
         Expanded(
           child: Column(
@@ -442,7 +439,8 @@ class _InfoRow extends StatelessWidget {
             children: <Widget>[
               Text(
                 label,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                style:
+                    const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 1),
               Text(
@@ -540,15 +538,15 @@ class _HistoryTile extends StatelessWidget {
     final isWin = item.outcome == 'win';
     final isLoss = item.outcome == 'loss';
     final color = isWin
-        ? const Color(0xFF4ADE80)
+        ? AppTheme.success
         : isLoss
-        ? const Color(0xFFF87171)
-        : const Color(0xFFFBBF24);
+            ? AppTheme.danger
+            : AppTheme.warning;
     final outcomeLabel = isWin
         ? strings.t('outcome.win')
         : isLoss
-        ? strings.t('outcome.loss')
-        : strings.t('outcome.draw');
+            ? strings.t('outcome.loss')
+            : strings.t('outcome.draw');
 
     return Panel(
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
@@ -566,8 +564,8 @@ class _HistoryTile extends StatelessWidget {
               isWin
                   ? Icons.emoji_events_rounded
                   : isLoss
-                  ? Icons.close_rounded
-                  : Icons.balance_rounded,
+                      ? Icons.close_rounded
+                      : Icons.balance_rounded,
               size: 18,
               color: color,
             ),
@@ -611,7 +609,7 @@ class _HistoryTile extends StatelessWidget {
                   }),
                   style: const TextStyle(
                     fontSize: 11,
-                    color: Color(0xFF9AA3B2),
+                    color: AppTheme.inkSoft,
                   ),
                 ),
               ],
@@ -620,7 +618,7 @@ class _HistoryTile extends StatelessWidget {
           const SizedBox(width: 8),
           Text(
             _timeAgo(item.reportedAt, strings),
-            style: const TextStyle(fontSize: 10, color: Color(0xFF6B7280)),
+            style: const TextStyle(fontSize: 10, color: AppTheme.inkFaint),
           ),
         ],
       ),

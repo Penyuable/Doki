@@ -42,6 +42,19 @@ class AuthRepository {
     return session;
   }
 
+  /// Mode offline: sesi pemain lokal tanpa kredensial.
+  Future<AuthSession> guest() async {
+    final data = await _api.post('/auth/guest', auth: false);
+    final session = AuthSession.fromJson(data);
+    try {
+      await _api.applySession(session);
+    } on Exception {
+      // Token lokal hanya penanda sesi in-memory; secure storage yang gagal
+      // (mis. keystore rusak) tidak boleh menghalangi main offline.
+    }
+    return session;
+  }
+
   Future<MeData> me() async {
     final data = await _api.get('/auth/me');
     return MeData.fromJson(data);

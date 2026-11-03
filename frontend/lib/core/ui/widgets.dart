@@ -1,9 +1,17 @@
+import 'dart:math' as math;
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../domain/models/card_model.dart';
 import '../theme/app_theme.dart';
+import 'clay.dart';
+import 'creature_avatar.dart';
 
+export 'clay.dart';
+export 'creature_avatar.dart';
+
+/// Latar polos pastel dengan beberapa gumpalan clay dekoratif.
 class AppBackground extends StatelessWidget {
   const AppBackground({super.key, required this.child});
 
@@ -11,35 +19,24 @@ class AppBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: <Color>[
-            Color(0xFF0B0A12),
-            Color(0xFF120F1D),
-            Color(0xFF0B0A12),
-          ],
-        ),
-      ),
+    return ColoredBox(
+      color: AppTheme.background,
       child: Stack(
         children: <Widget>[
-          Positioned(
-            top: -120,
-            right: -80,
-            child: _Glow(
-              color: AppTheme.primary.withValues(alpha: 0.22),
-              size: 280,
-            ),
+          const Positioned(
+            top: -70,
+            right: -50,
+            child: _Blob(color: Color(0xFFD8D2FA), size: 190),
           ),
-          Positioned(
-            bottom: -140,
-            left: -100,
-            child: _Glow(
-              color: AppTheme.accent.withValues(alpha: 0.12),
-              size: 320,
-            ),
+          const Positioned(
+            top: 260,
+            left: -80,
+            child: _Blob(color: Color(0xFFFCDCE7), size: 150),
+          ),
+          const Positioned(
+            bottom: -60,
+            right: 30,
+            child: _Blob(color: Color(0xFFD3ECF8), size: 170),
           ),
           child,
         ],
@@ -48,8 +45,8 @@ class AppBackground extends StatelessWidget {
   }
 }
 
-class _Glow extends StatelessWidget {
-  const _Glow({required this.color, required this.size});
+class _Blob extends StatelessWidget {
+  const _Blob({required this.color, required this.size});
 
   final Color color;
   final double size;
@@ -57,13 +54,45 @@ class _Glow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IgnorePointer(
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
+      child: RepaintBoundary(
+        child: Clay(
+          color: color,
+          width: size,
+          height: size,
           shape: BoxShape.circle,
-          gradient: RadialGradient(
-            colors: <Color>[color, color.withValues(alpha: 0)],
+          depth: 0.6,
+        ),
+      ),
+    );
+  }
+}
+
+/// Logo Dokimon: tile clay ungu dengan kreatur api. Sama dengan ikon app.
+class AppLogo extends StatelessWidget {
+  const AppLogo({super.key, this.size = 96, this.animate = true});
+
+  final double size;
+  final bool animate;
+
+  static final CardModel _mascot = mascotCard('card_001', CardElement.fire);
+
+  @override
+  Widget build(BuildContext context) {
+    return Clay(
+      width: size,
+      height: size,
+      radius: size * 0.3,
+      color: AppTheme.primary,
+      depth: (size / 90).clamp(0.4, 1.2),
+      child: Padding(
+        padding: EdgeInsets.all(size * 0.1),
+        child: Clay(
+          shape: BoxShape.circle,
+          color: const Color(0xFFFFE2CF),
+          depth: (size / 140).clamp(0.3, 0.9),
+          child: Padding(
+            padding: EdgeInsets.only(top: size * 0.04),
+            child: CreatureAvatar(card: _mascot, animate: animate),
           ),
         ),
       ),
@@ -80,16 +109,17 @@ class SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 12, left: 4),
       child: Row(
         children: <Widget>[
           Expanded(
             child: Text(
               title,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.2,
-              ),
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.1,
+                    color: AppTheme.ink,
+                  ),
             ),
           ),
           if (trailing != null) trailing!,
@@ -103,7 +133,7 @@ class Panel extends StatelessWidget {
   const Panel({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.all(16),
+    this.padding = const EdgeInsets.all(18),
     this.color,
   });
 
@@ -113,13 +143,10 @@ class Panel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return Clay(
+      color: color ?? AppTheme.surface,
+      radius: 26,
       padding: padding,
-      decoration: BoxDecoration(
-        color: color ?? AppTheme.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
-      ),
       child: child,
     );
   }
@@ -136,7 +163,13 @@ class LoadingView extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          const CircularProgressIndicator(),
+          const Clay(
+            width: 64,
+            height: 64,
+            shape: BoxShape.circle,
+            padding: EdgeInsets.all(18),
+            child: CircularProgressIndicator(strokeWidth: 3),
+          ),
           if (message != null) ...<Widget>[
             const SizedBox(height: 16),
             Text(message!, style: Theme.of(context).textTheme.bodyMedium),
@@ -167,12 +200,18 @@ class ErrorView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            const Icon(
-              Icons.cloud_off_rounded,
-              size: 44,
-              color: Color(0xFF9AA3B2),
+            const Clay(
+              width: 76,
+              height: 76,
+              shape: BoxShape.circle,
+              color: Color(0xFFFCDCE3),
+              child: Icon(
+                Icons.cloud_off_rounded,
+                size: 36,
+                color: AppTheme.danger,
+              ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             Text(
               message,
               textAlign: TextAlign.center,
@@ -180,10 +219,7 @@ class ErrorView extends StatelessWidget {
             ),
             if (onRetry != null) ...<Widget>[
               const SizedBox(height: 16),
-              FilledButton.tonal(
-                onPressed: onRetry,
-                child: Text(retryLabel),
-              ),
+              ClayButton(label: retryLabel, onPressed: onRetry),
             ],
           ],
         ),
@@ -214,8 +250,13 @@ class EmptyView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            Icon(icon, size: 48, color: const Color(0xFF6B7280)),
-            const SizedBox(height: 12),
+            Clay(
+              width: 80,
+              height: 80,
+              shape: BoxShape.circle,
+              child: Icon(icon, size: 38, color: AppTheme.inkFaint),
+            ),
+            const SizedBox(height: 16),
             Text(
               title,
               style: Theme.of(context).textTheme.titleMedium,
@@ -240,6 +281,60 @@ class EmptyView extends StatelessWidget {
   }
 }
 
+/// Pil clay kecil berwarna solid.
+class ClayPill extends StatelessWidget {
+  const ClayPill({
+    super.key,
+    required this.label,
+    required this.color,
+    this.icon,
+    this.foreground = Colors.white,
+    this.fontSize = 11,
+  });
+
+  final String label;
+  final Color color;
+  final IconData? icon;
+  final Color foreground;
+  final double fontSize;
+
+  @override
+  Widget build(BuildContext context) {
+    return Clay(
+      color: color,
+      radius: 999,
+      depth: 0.4,
+      padding: EdgeInsets.symmetric(
+        horizontal: fontSize * 0.85,
+        vertical: fontSize * 0.4,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          if (icon != null) ...<Widget>[
+            Icon(icon, size: fontSize * 1.25, color: foreground),
+            SizedBox(width: fontSize * 0.35),
+          ],
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              softWrap: false,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: foreground,
+                fontSize: fontSize,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.3,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class RarityChip extends StatelessWidget {
   const RarityChip({super.key, required this.label, required this.rarity});
 
@@ -248,23 +343,10 @@ class RarityChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = AppTheme.rarityColor(rarity);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.16),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.45)),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: 10,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 0.4,
-        ),
-      ),
+    return ClayPill(
+      label: label.toUpperCase(),
+      color: AppTheme.rarityColor(rarity),
+      fontSize: 10,
     );
   }
 }
@@ -277,21 +359,11 @@ class ElementChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = AppTheme.elementColor(element);
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        Icon(AppTheme.elementIcon(element), size: 14, color: color),
-        const SizedBox(width: 4),
-        Text(
-          label,
-          style: TextStyle(
-            color: color,
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
+    return ClayPill(
+      label: label,
+      icon: AppTheme.elementIcon(element),
+      color: AppTheme.elementColor(element),
+      fontSize: 11,
     );
   }
 }
@@ -307,44 +379,20 @@ class WalletChips extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
-        _currency(
-          Icons.monetization_on_rounded,
-          gold,
-          AppTheme.gold,
+        ClayPill(
+          label: gold.toString(),
+          icon: Icons.monetization_on_rounded,
+          color: AppTheme.gold,
+          fontSize: 12,
         ),
         const SizedBox(width: 8),
-        _currency(
-          Icons.diamond_rounded,
-          gems,
-          const Color(0xFF67E8F9),
+        ClayPill(
+          label: gems.toString(),
+          icon: Icons.diamond_rounded,
+          color: AppTheme.gem,
+          fontSize: 12,
         ),
       ],
-    );
-  }
-
-  Widget _currency(IconData icon, int value, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.32)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 5),
-          Text(
-            value.toString(),
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.w800,
-              fontSize: 12,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -371,36 +419,39 @@ class StatBox extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           if (icon != null) ...<Widget>[
-            Icon(icon, size: 18, color: color),
-            const SizedBox(height: 8),
+            Clay(
+              width: 32,
+              height: 32,
+              shape: BoxShape.circle,
+              color: color,
+              depth: 0.5,
+              child: Icon(icon, size: 17, color: Colors.white),
+            ),
+            const SizedBox(height: 10),
           ],
           Text(
             value,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w900,
-              color: color,
-            ),
+                  fontWeight: FontWeight.w900,
+                  color: AppTheme.ink,
+                ),
           ),
           const SizedBox(height: 2),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: const Color(0xFF9AA3B2),
-            ),
-          ),
+          Text(label, style: Theme.of(context).textTheme.bodySmall),
         ],
       ),
     );
   }
 }
 
+/// Bar HP clay: alur cekung + isi pil solid.
 class HpBar extends StatelessWidget {
   const HpBar({
     super.key,
     required this.current,
     required this.max,
-    this.height = 8,
-    this.color = const Color(0xFF34D399),
+    this.height = 10,
+    this.color = AppTheme.success,
   });
 
   final int current;
@@ -414,15 +465,23 @@ class HpBar extends StatelessWidget {
     final effective = ratio > 0.5
         ? color
         : ratio > 0.25
-        ? const Color(0xFFFBBF24)
-        : const Color(0xFFF87171);
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(height),
-      child: LinearProgressIndicator(
-        value: ratio,
-        minHeight: height,
-        backgroundColor: Colors.white.withValues(alpha: 0.08),
-        valueColor: AlwaysStoppedAnimation<Color>(effective),
+            ? AppTheme.warning
+            : AppTheme.danger;
+    return Clay(
+      color: AppTheme.surfaceHigh,
+      radius: height,
+      height: height,
+      pressed: true,
+      depth: 0.4,
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: AnimatedFractionallySizedBox(
+          duration: const Duration(milliseconds: 380),
+          curve: Curves.easeOutCubic,
+          widthFactor: ratio,
+          heightFactor: 1,
+          child: Clay(color: effective, radius: height, depth: 0.25),
+        ),
       ),
     );
   }
@@ -438,15 +497,15 @@ class OfflineBanner extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      color: const Color(0xFF3B2F12),
+      color: const Color(0xFFFFF0D2),
       child: Row(
         children: <Widget>[
-          const Icon(Icons.wifi_off_rounded, size: 16, color: AppTheme.gold),
+          const Icon(Icons.wifi_off_rounded, size: 16, color: AppTheme.warning),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               message,
-              style: const TextStyle(fontSize: 12, color: AppTheme.gold),
+              style: const TextStyle(fontSize: 12, color: AppTheme.ink),
             ),
           ),
         ],
@@ -455,54 +514,47 @@ class OfflineBanner extends StatelessWidget {
   }
 }
 
+/// Artwork kartu: kreatur 3D prosedural di panggung clay; gambar CMS
+/// menimpanya bila berhasil dimuat.
 class CardArtwork extends StatelessWidget {
   const CardArtwork({
     super.key,
     required this.card,
     this.borderRadius = 14,
+    this.animate = true,
+    this.mirrored = false,
   });
 
   final CardModel card;
   final double borderRadius;
+  final bool animate;
+  final bool mirrored;
 
   @override
   Widget build(BuildContext context) {
-    final elementColor = AppTheme.elementColor(card.element);
+    final url = card.displayImageUrl;
     return ClipRRect(
       borderRadius: BorderRadius.circular(borderRadius),
-      child: CachedNetworkImage(
-        imageUrl: card.displayImageUrl,
-        fit: BoxFit.cover,
-        fadeInDuration: const Duration(milliseconds: 180),
-        placeholder: (context, url) => _fallback(elementColor, card),
-        errorWidget: (context, url, error) => _fallback(elementColor, card),
-      ),
-    );
-  }
-
-  Widget _fallback(Color color, CardModel card) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: <Color>[
-            color.withValues(alpha: 0.42),
-            const Color(0xFF15131F),
-          ],
-        ),
-      ),
-      child: Center(
-        child: Icon(
-          AppTheme.elementIcon(card.element),
-          size: 42,
-          color: color.withValues(alpha: 0.85),
-        ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: <Widget>[
+          CreatureScene(card: card, animate: animate, mirrored: mirrored),
+          if (url.startsWith('https://'))
+            CachedNetworkImage(
+              imageUrl: url,
+              fit: BoxFit.cover,
+              fadeInDuration: const Duration(milliseconds: 180),
+              placeholder: (context, url) => const SizedBox.shrink(),
+              errorWidget: (context, url, error) => const SizedBox.shrink(),
+            ),
+        ],
       ),
     );
   }
 }
 
+/// Kartu clay: badan pastel sesuai elemen, jendela artwork cekung, bola
+/// biaya, badge elemen, pip rarity, dan pil statistik.
 class CardTile extends StatelessWidget {
   const CardTile({
     super.key,
@@ -511,6 +563,7 @@ class CardTile extends StatelessWidget {
     this.onTap,
     this.showStats = true,
     this.obscured = false,
+    this.animate = true,
   });
 
   final CardModel card;
@@ -521,200 +574,263 @@ class CardTile extends StatelessWidget {
   /// Kartu belum dimiliki: silhouette + nama disamarkan.
   final bool obscured;
 
+  /// Animasi idle kreatur.
+  final bool animate;
+
   static const List<double> _grayscale = <double>[
-    0.2126, 0.7152, 0.0722, 0, 0,
+    0.2126, 0.7152, 0.0722, 0, 0, //
     0.2126, 0.7152, 0.0722, 0, 0,
     0.2126, 0.7152, 0.0722, 0, 0,
     0, 0, 0, 1, 0,
   ];
 
-  static const List<double> _identity = <double>[
-    1, 0, 0, 0, 0,
-    0, 1, 0, 0, 0,
-    0, 0, 1, 0, 0,
-    0, 0, 0, 1, 0,
-  ];
+  static double _statSize(double w) => (w * 0.075).clamp(7.0, 15.0);
 
   @override
   Widget build(BuildContext context) {
-    final rarityColor = AppTheme.rarityColor(card.rarity);
-    return Semantics(
-      button: onTap != null,
-      label: obscured ? '???' : card.name,
-      child: Opacity(
-        opacity: obscured ? 0.5 : 1,
-        child: ColorFiltered(
-          colorFilter: ColorFilter.matrix(
-            obscured ? _grayscale : _identity,
-          ),
-          child: GestureDetector(
-        onTap: onTap,
-        child: AspectRatio(
-          aspectRatio: 2 / 3,
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: rarityColor.withValues(alpha: 0.75),
-                width: 1.4,
-              ),
-              boxShadow: <BoxShadow>[
-                BoxShadow(
-                  color: rarityColor.withValues(alpha: 0.18),
-                  blurRadius: 14,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(15),
-              child: Stack(
-                fit: StackFit.expand,
-                children: <Widget>[
-                  CardArtwork(card: card, borderRadius: 15),
-                  const DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: <Color>[
-                          Color(0x00000000),
-                          Color(0x33000000),
-                          Color(0xE6000000),
-                        ],
-                        stops: <double>[0.35, 0.62, 1],
+    final live = animate && !obscured;
+
+    Widget tile = LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth.isFinite ? constraints.maxWidth : 120.0;
+        final radius = (w * 0.13).clamp(10.0, 26.0);
+        final pad = w * 0.06;
+        final nameSize = (w * 0.09).clamp(8.0, 18.0);
+        final depth = (w / 150).clamp(0.3, 1.0);
+        final rarityColor = AppTheme.rarityColor(card.rarity);
+
+        return Clay(
+          color: AppTheme.elementPastel(card.element),
+          radius: radius,
+          depth: depth,
+          padding: EdgeInsets.all(pad),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Expanded(
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: <Widget>[
+                    Positioned.fill(
+                      child: Clay(
+                        color: Clay.shadeOf(
+                          AppTheme.elementPastel(card.element),
+                          0.05,
+                        ),
+                        radius: radius * 0.7,
+                        pressed: true,
+                        depth: depth * 0.7,
+                        child: CardArtwork(
+                          card: card,
+                          borderRadius: radius * 0.7,
+                          animate: live,
+                        ),
                       ),
                     ),
-                  ),
-                  if (obscured)
-                    const Center(
-                      child: Icon(
-                        Icons.lock_rounded,
-                        size: 26,
-                        color: Colors.white70,
-                      ),
-                    ),
-                  Positioned(
-                    top: 6,
-                    left: 6,
-                    child: _costBadge(),
-                  ),
-                  if (quantity != null && quantity! > 1)
                     Positioned(
-                      top: 6,
-                      right: 6,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 7,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.7),
-                          borderRadius: BorderRadius.circular(999),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.25),
-                          ),
-                        ),
-                        child: Text(
-                          '×$quantity',
-                          style: const TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
+                      top: -w * 0.02,
+                      left: -w * 0.02,
+                      child: _CostBall(cost: card.cost, size: w * 0.22),
+                    ),
+                    Positioned(
+                      top: w * 0.02,
+                      right: w * 0.02,
+                      child: _ElementBadge(
+                        element: card.element,
+                        size: w * 0.17,
                       ),
                     ),
-                  Positioned(
-                    left: 8,
-                    right: 8,
-                    bottom: 7,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: <Widget>[
-                        Text(
-                          obscured ? '???' : card.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            height: 1.1,
-                          ),
+                    if (quantity != null && quantity! > 1)
+                      Positioned(
+                        bottom: w * 0.03,
+                        right: w * 0.03,
+                        child: ClayPill(
+                          label: '×$quantity',
+                          color: AppTheme.ink,
+                          fontSize: (w * 0.075).clamp(7.0, 13.0),
                         ),
-                        if (showStats) ...<Widget>[
-                          const SizedBox(height: 3),
-                          Row(
-                            children: <Widget>[
-                              if (card.isUnit) ...<Widget>[
-                                _stat(Icons.favorite_rounded, card.hp ?? 0),
-                                const SizedBox(width: 6),
-                                _stat(
-                                  Icons.flash_on_rounded,
-                                  card.attack ?? 0,
-                                ),
-                              ] else
-                                Row(
-                                  children: <Widget>[
-                                    const Icon(
-                                      Icons.auto_awesome_rounded,
-                                      size: 10,
-                                      color: AppTheme.accent,
-                                    ),
-                                    const SizedBox(width: 2),
-                                    Text(
-                                      card.ability?.type.toUpperCase() ?? 'SPELL',
-                                      style: const TextStyle(
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.w700,
-                                        color: AppTheme.accent,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                            ],
-                          ),
-                        ],
-                      ],
+                      ),
+                    if (obscured)
+                      Center(
+                        child: Icon(
+                          Icons.lock_rounded,
+                          size: w * 0.24,
+                          color: AppTheme.inkSoft,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              SizedBox(height: w * 0.045),
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: Text(
+                      obscured ? '???' : card.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: nameSize,
+                        fontWeight: FontWeight.w900,
+                        height: 1.15,
+                        color: AppTheme.ink,
+                      ),
                     ),
+                  ),
+                  _RarityPips(
+                    count: card.rarity.index + 1,
+                    color: rarityColor,
+                    size: w * 0.05,
                   ),
                 ],
               ),
+              if (showStats) ...<Widget>[
+                SizedBox(height: w * 0.035),
+                _statsRow(w),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+
+    if (obscured) {
+      tile = Opacity(
+        opacity: 0.55,
+        child: ColorFiltered(
+          colorFilter: const ColorFilter.matrix(_grayscale),
+          child: tile,
+        ),
+      );
+    }
+
+    return Semantics(
+      button: onTap != null,
+      label: obscured ? '???' : card.name,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AspectRatio(aspectRatio: 2 / 3, child: tile),
+      ),
+    );
+  }
+
+  Widget _statsRow(double w) {
+    final size = _statSize(w);
+    if (!card.isUnit) {
+      return Row(
+        children: <Widget>[
+          Flexible(
+            child: ClayPill(
+              label: card.ability?.type.toUpperCase() ?? 'SPELL',
+              icon: Icons.auto_awesome_rounded,
+              color: AppTheme.accent,
+              fontSize: size,
             ),
           ),
+        ],
+      );
+    }
+    return Row(
+      children: <Widget>[
+        Flexible(
+          child: ClayPill(
+            label: '${card.attack ?? 0}',
+            icon: Icons.flash_on_rounded,
+            color: AppTheme.attack,
+            fontSize: size,
+          ),
         ),
+        SizedBox(width: w * 0.03),
+        Flexible(
+          child: ClayPill(
+            label: '${card.hp ?? 0}',
+            icon: Icons.favorite_rounded,
+            color: AppTheme.success,
+            fontSize: size,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CostBall extends StatelessWidget {
+  const _CostBall({required this.cost, required this.size});
+
+  final int cost;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Clay(
+      width: size,
+      height: size,
+      shape: BoxShape.circle,
+      color: AppTheme.primary,
+      depth: (size / 30).clamp(0.3, 0.8),
+      child: Center(
+        child: Text(
+          cost.toString(),
+          style: TextStyle(
+            fontSize: size * 0.5,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
           ),
         ),
       ),
     );
   }
+}
 
-  Widget _costBadge() {
-    return Container(
-      width: 22,
-      height: 22,
-      alignment: Alignment.center,
-      decoration: const BoxDecoration(
-        color: Color(0xE611827F),
-        shape: BoxShape.circle,
-      ),
-      child: Text(
-        card.cost.toString(),
-        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900),
+class _ElementBadge extends StatelessWidget {
+  const _ElementBadge({required this.element, required this.size});
+
+  final CardElement element;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Clay(
+      width: size,
+      height: size,
+      shape: BoxShape.circle,
+      color: AppTheme.surface,
+      depth: (size / 30).clamp(0.25, 0.6),
+      child: Icon(
+        AppTheme.elementIcon(element),
+        size: size * 0.62,
+        color: AppTheme.elementColor(element),
       ),
     );
   }
+}
 
-  Widget _stat(IconData icon, int value) {
+class _RarityPips extends StatelessWidget {
+  const _RarityPips({
+    required this.count,
+    required this.color,
+    required this.size,
+  });
+
+  final int count;
+  final Color color;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final dot = math.max(3.0, size);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
-        Icon(icon, size: 10, color: Colors.white70),
-        const SizedBox(width: 2),
-        Text(
-          value.toString(),
-          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
-        ),
+        for (var i = 0; i < count; i++)
+          Padding(
+            padding: EdgeInsets.only(left: dot * 0.25),
+            child: Container(
+              width: dot,
+              height: dot,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            ),
+          ),
       ],
     );
   }

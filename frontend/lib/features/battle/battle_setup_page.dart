@@ -159,7 +159,7 @@ class _BattleSetupPageState extends State<BattleSetupPage> {
                             ),
                             child: const Icon(
                               Icons.style_rounded,
-                              color: Color(0xFFC4B5FD),
+                              color: AppTheme.primary,
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -233,7 +233,7 @@ class _BattleSetupPageState extends State<BattleSetupPage> {
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           fontSize: 12,
-                          color: Color(0xFFFBBF24),
+                          color: AppTheme.warning,
                         ),
                       ),
                     ],
@@ -263,9 +263,9 @@ class _DifficultyCard extends StatelessWidget {
   };
 
   static const Map<String, Color> _colors = <String, Color>{
-    'easy': Color(0xFF4ADE80),
-    'medium': Color(0xFFFBBF24),
-    'master': Color(0xFFFB7185),
+    'easy': AppTheme.success,
+    'medium': AppTheme.warning,
+    'master': AppTheme.danger,
   };
 
   @override
@@ -275,37 +275,28 @@ class _DifficultyCard extends StatelessWidget {
     final color = _colors[difficulty] ?? AppTheme.primary;
     final accent = color;
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      padding: EdgeInsets.all(selected ? 3 : 0),
+      decoration: BoxDecoration(
+        color: selected ? accent : Colors.transparent,
+        borderRadius: BorderRadius.circular(28),
+      ),
+      child: Clay(
+        onTap: onTap,
+        radius: 26,
         padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
-          color: selected
-              ? accent.withValues(alpha: 0.12)
-              : AppTheme.surface,
-          border: Border.all(
-            color: selected
-                ? accent.withValues(alpha: 0.6)
-                : Colors.white.withValues(alpha: 0.06),
-            width: selected ? 1.4 : 1,
-          ),
-        ),
         child: Row(
           children: <Widget>[
-            Container(
-              width: 42,
-              height: 42,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                color: accent.withValues(alpha: 0.16),
-              ),
+            Clay(
+              width: 44,
+              height: 44,
+              shape: BoxShape.circle,
+              color: accent,
+              depth: 0.6,
               child: Icon(
                 _icons[difficulty] ?? Icons.smart_toy_rounded,
-                color: accent,
+                color: Colors.white,
               ),
             ),
             const SizedBox(width: 12),
@@ -347,7 +338,7 @@ class _DifficultyCard extends StatelessWidget {
               selected
                   ? Icons.radio_button_checked_rounded
                   : Icons.radio_button_unchecked_rounded,
-              color: selected ? accent : const Color(0xFF6B7280),
+              color: selected ? accent : AppTheme.inkFaint,
               size: 20,
             ),
           ],
@@ -387,7 +378,7 @@ class _StatsRow extends StatelessWidget {
             label: strings.t('outcome.win'),
             value: stats.wins.toString(),
             icon: Icons.emoji_events_rounded,
-            color: const Color(0xFF4ADE80),
+            color: AppTheme.success,
           ),
         ),
         const SizedBox(width: 10),

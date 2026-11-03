@@ -12,7 +12,9 @@ enum CollectionSort {
   attack,
   hp;
 
-  String get i18nKey => 'collection.sort.$name';
+  // `name` di sini merujuk ke konstanta CollectionSort.name; pakai this.name.
+  // ignore: unnecessary_this
+  String get i18nKey => 'collection.sort.${this.name}';
 }
 
 class CollectionFilter {

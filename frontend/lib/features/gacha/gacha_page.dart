@@ -76,7 +76,9 @@ class _GachaViewState extends State<_GachaView> {
                     children: <Widget>[
                       Text(
                         strings.t('gacha.title'),
-                        style: Theme.of(context).textTheme.headlineSmall
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineSmall
                             ?.copyWith(fontWeight: FontWeight.w900),
                       ),
                       Text(
@@ -130,7 +132,7 @@ class _GachaViewState extends State<_GachaView> {
                   HpBar(
                     current: state.pity.counter,
                     max: state.pity.threshold,
-                    color: const Color(0xFFC084FC),
+                    color: AppTheme.primary,
                     height: 9,
                   ),
                 ],
@@ -165,7 +167,7 @@ class _GachaViewState extends State<_GachaView> {
                   label: Text(strings.t('gacha.currencyGem')),
                   icon: const Icon(
                     Icons.diamond_rounded,
-                    color: Color(0xFF67E8F9),
+                    color: AppTheme.gem,
                   ),
                 ),
               ],
@@ -379,62 +381,54 @@ class _PullButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
     final isGold = currency == 'gold';
-    final color = isGold ? AppTheme.gold : const Color(0xFF67E8F9);
+    final color = isGold ? AppTheme.gold : AppTheme.gem;
     final balance = user == null
         ? 0
         : isGold
-        ? user!.gold
-        : user!.gems;
+            ? user!.gold
+            : user!.gems;
     final affordable = balance >= price;
 
-    return InkWell(
+    return Clay(
       onTap: busy ? null : onTap,
-      borderRadius: BorderRadius.circular(18),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: <Color>[
-              color.withValues(alpha: 0.22),
-              AppTheme.surface,
-            ],
+      color: Color.lerp(color, Colors.white, 0.72)!,
+      radius: 26,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 18),
+      child: Column(
+        children: <Widget>[
+          Clay(
+            width: 44,
+            height: 44,
+            shape: BoxShape.circle,
+            color: color,
+            depth: 0.6,
+            child: Icon(
+              isGold ? Icons.monetization_on_rounded : Icons.diamond_rounded,
+              color: Colors.white,
+              size: 24,
+            ),
           ),
-          border: Border.all(color: color.withValues(alpha: 0.45)),
-        ),
-        child: Column(
-          children: <Widget>[
-            Icon(
-              isGold
-                  ? Icons.monetization_on_rounded
-                  : Icons.diamond_rounded,
-              color: color,
-              size: 26,
+          const SizedBox(height: 8),
+          Text(
+            strings.t(count == 1 ? 'gacha.pull1' : 'gacha.pull10'),
+            style: const TextStyle(
+              fontWeight: FontWeight.w900,
+              fontSize: 14,
             ),
-            const SizedBox(height: 8),
-            Text(
-              strings.t(count == 1 ? 'gacha.pull1' : 'gacha.pull10'),
-              style: const TextStyle(
-                fontWeight: FontWeight.w900,
-                fontSize: 14,
-              ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            strings.t(
+              isGold ? 'gacha.costGold' : 'gacha.costGem',
+              <String, String>{'amount': price.toString()},
             ),
-            const SizedBox(height: 4),
-            Text(
-              strings.t(
-                isGold ? 'gacha.costGold' : 'gacha.costGem',
-                <String, String>{'amount': price.toString()},
-              ),
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: affordable ? color : const Color(0xFFF87171),
-              ),
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: affordable ? color : AppTheme.danger,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

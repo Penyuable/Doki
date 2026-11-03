@@ -341,14 +341,14 @@ class _Choice extends StatelessWidget {
       labelStyle: TextStyle(
         fontSize: 11.5,
         fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
-        color: selected ? accent : const Color(0xFF9AA3B2),
+        color: selected ? accent : AppTheme.inkSoft,
       ),
       selectedColor: accent.withValues(alpha: 0.18),
       backgroundColor: AppTheme.surface,
       side: BorderSide(
         color: selected
             ? accent.withValues(alpha: 0.6)
-            : Colors.white.withValues(alpha: 0.06),
+            : AppTheme.ink.withValues(alpha: 0.06),
       ),
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       visualDensity: const VisualDensity(horizontal: -2, vertical: -2),

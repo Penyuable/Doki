@@ -38,27 +38,21 @@ class HomePage extends StatelessWidget {
         final stats = profile.stats;
         final xpNext = GameConfig.xpToNext(user.level);
         final winRate = stats.winRate;
-        final winRateText = winRate == null
-            ? '—'
-            : '${(winRate * 100).toStringAsFixed(1)}%';
+        final winRateText =
+            winRate == null ? '—' : '${(winRate * 100).toStringAsFixed(1)}%';
 
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 110),
           children: <Widget>[
             Row(
               children: <Widget>[
-                Container(
+                Clay(
                   width: 46,
                   height: 46,
+                  shape: BoxShape.circle,
+                  color: AppTheme.primary,
+                  depth: 0.7,
                   alignment: Alignment.center,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: <Color>[AppTheme.primary, AppTheme.accent],
-                    ),
-                  ),
                   child: Text(
                     user.username.isEmpty
                         ? '?'
@@ -81,7 +75,9 @@ class HomePage extends StatelessWidget {
                         }),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleMedium
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
                             ?.copyWith(fontWeight: FontWeight.w800),
                       ),
                       Text(
@@ -108,8 +104,8 @@ class HomePage extends StatelessWidget {
                           'level': user.level.toString(),
                         }),
                         style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
+                              fontWeight: FontWeight.w800,
+                            ),
                       ),
                       const Spacer(),
                       Text(
@@ -138,7 +134,7 @@ class HomePage extends StatelessWidget {
                   child: _QuickAction(
                     icon: Icons.sports_martial_arts_rounded,
                     label: strings.t('home.battleCta'),
-                    color: const Color(0xFFF97316),
+                    color: AppTheme.attack,
                     onTap: () => _openBattle(context),
                   ),
                 ),
@@ -173,7 +169,9 @@ class HomePage extends StatelessWidget {
                       children: <Widget>[
                         Text(
                           profile.activeDeck?.name ?? strings.t('home.noDeck'),
-                          style: Theme.of(context).textTheme.titleSmall
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleSmall
                               ?.copyWith(fontWeight: FontWeight.w800),
                         ),
                         if (profile.activeDeck != null) ...<Widget>[
@@ -220,7 +218,9 @@ class HomePage extends StatelessWidget {
                           strings.t('home.dailyStreak', <String, String>{
                             'streak': profile.daily.streak.toString(),
                           }),
-                          style: Theme.of(context).textTheme.titleSmall
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleSmall
                               ?.copyWith(fontWeight: FontWeight.w700),
                         ),
                         Text(
@@ -234,10 +234,9 @@ class HomePage extends StatelessWidget {
                   ),
                   FilledButton(
                     onPressed:
-                        profile.daily.canClaim &&
-                            !profileState.claimingDaily
-                        ? () => _claimDaily(context)
-                        : null,
+                        profile.daily.canClaim && !profileState.claimingDaily
+                            ? () => _claimDaily(context)
+                            : null,
                     child: profileState.claimingDaily
                         ? const SizedBox(
                             width: 16,
@@ -258,7 +257,7 @@ class HomePage extends StatelessWidget {
                     label: strings.t('outcome.win'),
                     value: stats.wins.toString(),
                     icon: Icons.emoji_events_rounded,
-                    color: const Color(0xFF4ADE80),
+                    color: AppTheme.success,
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -267,7 +266,7 @@ class HomePage extends StatelessWidget {
                     label: strings.t('outcome.loss'),
                     value: stats.losses.toString(),
                     icon: Icons.close_rounded,
-                    color: const Color(0xFFF87171),
+                    color: AppTheme.danger,
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -360,31 +359,31 @@ class _QuickAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return Clay(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
-        ),
-        child: Column(
-          children: <Widget>[
-            Icon(icon, color: color, size: 24),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: color,
-              ),
+      radius: 24,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
+      child: Column(
+        children: <Widget>[
+          Clay(
+            width: 42,
+            height: 42,
+            shape: BoxShape.circle,
+            color: color,
+            depth: 0.6,
+            child: Icon(icon, color: Colors.white, size: 22),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w800,
+              color: AppTheme.ink,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
