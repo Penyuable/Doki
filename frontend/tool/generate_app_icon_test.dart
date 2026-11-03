@@ -22,6 +22,7 @@ final CardModel _mascot = mascotCard(
   'card_001',
   CardElement.fire,
   rarity: Rarity.common,
+  name: 'Ember Rex',
 );
 
 Widget _disc(double diameter) {

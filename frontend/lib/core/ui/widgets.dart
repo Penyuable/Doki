@@ -74,7 +74,11 @@ class AppLogo extends StatelessWidget {
   final double size;
   final bool animate;
 
-  static final CardModel _mascot = mascotCard('card_001', CardElement.fire);
+  static final CardModel _mascot = mascotCard(
+    'card_001',
+    CardElement.fire,
+    name: 'Ember Rex',
+  );
 
   @override
   Widget build(BuildContext context) {

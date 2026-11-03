@@ -148,10 +148,11 @@ CardModel mascotCard(
   String id,
   CardElement element, {
   Rarity rarity = Rarity.rare,
+  String? name,
 }) {
   return CardModel(
     id: id,
-    name: id,
+    name: name ?? id,
     element: element,
     rarity: rarity,
     type: CardType.unit,
@@ -180,6 +181,77 @@ int creatureSeed(String id) {
     hash = (hash * 0x01000193) & 0xFFFFFFFF;
   }
   return hash;
+}
+
+/// Spesies kreatur. Menentukan anatomi; elemen menentukan warna & aksen.
+enum CreatureSpecies {
+  dino,
+  dragon,
+  bird,
+  pig,
+  dog,
+  bear,
+  bunny,
+  cat,
+  turtle,
+  golem,
+  serpent,
+  sprite,
+  bug,
+}
+
+/// Kata kunci nama kartu → spesies (urutan penting: yang lebih spesifik dulu).
+const List<(List<String>, CreatureSpecies)> _speciesKeywords = [
+  (<String>['drake', 'dragon', 'wyvern'], CreatureSpecies.dragon),
+  (<String>['dino', 'saur', 'rex', 'raptor', 'titan'], CreatureSpecies.dino),
+  (
+    <String>['phoenix', 'griffon', 'bird', 'hawk', 'sovereign', 'wisp', 'owl'],
+    CreatureSpecies.bird,
+  ),
+  (<String>['pig', 'boar', 'hog', 'cinder'], CreatureSpecies.pig),
+  (<String>['pup', 'dog', 'hound', 'wolf'], CreatureSpecies.dog),
+  (<String>['cub', 'bear'], CreatureSpecies.bear),
+  (<String>['hare', 'bunny', 'rabbit', 'hop'], CreatureSpecies.bunny),
+  (<String>['stalker', 'cat', 'panther', 'lynx'], CreatureSpecies.cat),
+  (
+    <String>['turtle', 'tortoise', 'shell', 'tidal warden'],
+    CreatureSpecies.turtle
+  ),
+  (
+    <String>['golem', 'sentinel', 'warden', 'colossus', 'giant'],
+    CreatureSpecies.golem,
+  ),
+  (<String>['serpent', 'snake', 'wyrm', 'naga'], CreatureSpecies.serpent),
+  (
+    <String>['sprite', 'nymph', 'fairy', 'devil', 'pixie'],
+    CreatureSpecies.sprite
+  ),
+  (<String>['mite', 'beetle', 'bug', 'moth'], CreatureSpecies.bug),
+];
+
+/// Spesies untuk sebuah kartu: dari nama bila cocok, selain itu dari hash id.
+CreatureSpecies speciesOf(CardModel card) {
+  final name = card.name.toLowerCase();
+  for (final (keywords, species) in _speciesKeywords) {
+    for (final keyword in keywords) {
+      if (name.contains(keyword)) return species;
+    }
+  }
+  const fallback = <CreatureSpecies>[
+    CreatureSpecies.pig,
+    CreatureSpecies.dino,
+    CreatureSpecies.bird,
+    CreatureSpecies.dog,
+    CreatureSpecies.bunny,
+    CreatureSpecies.cat,
+    CreatureSpecies.bear,
+  ];
+  return fallback[creatureSeed(card.id) % fallback.length];
+}
+
+Color _darken(Color color, [double amount = 0.15]) {
+  final hsl = HSLColor.fromColor(color);
+  return hsl.withLightness((hsl.lightness - amount).clamp(0.0, 1.0)).toColor();
 }
 
 class CreaturePainter extends CustomPainter {
@@ -212,36 +284,1484 @@ class CreaturePainter extends CustomPainter {
 
   // ---------------------------------------------------------------- creature
 
+  CreatureSpecies get species => speciesOf(card);
+
   void _paintCreature(Canvas canvas, Size size) {
     final u = math.min(size.width, size.height * 0.9);
     final cx = size.width / 2;
     final groundY = size.height * 0.86;
     final bob = _wave;
+    final kind = species;
+    final hover = kind == CreatureSpecies.sprite;
 
-    final shape = seed % 3;
-    final (rxF, ryF) = switch (shape) {
-      0 => (0.30, 0.27),
-      1 => (0.26, 0.31),
-      _ => (0.33, 0.25),
+    final (rxF, ryF) = switch (kind) {
+      CreatureSpecies.dino => (0.27, 0.29),
+      CreatureSpecies.dragon => (0.27, 0.28),
+      CreatureSpecies.bird => (0.28, 0.27),
+      CreatureSpecies.pig => (0.32, 0.25),
+      CreatureSpecies.dog => (0.29, 0.27),
+      CreatureSpecies.bear => (0.31, 0.28),
+      CreatureSpecies.bunny => (0.26, 0.25),
+      CreatureSpecies.cat => (0.27, 0.27),
+      CreatureSpecies.turtle => (0.33, 0.24),
+      CreatureSpecies.golem => (0.31, 0.29),
+      CreatureSpecies.serpent => (0.22, 0.19),
+      CreatureSpecies.sprite => (0.24, 0.27),
+      CreatureSpecies.bug => (0.30, 0.25),
     };
-    final rx = u * rxF * (1 + 0.025 * bob);
-    final ry = u * ryF * (1 - 0.025 * bob);
-    final cy = groundY - ry - u * 0.07 - bob * u * 0.025;
+    final squash = kind == CreatureSpecies.golem ? 0.01 : 0.025;
+    final grow = 0.9 + 0.04 * _tier;
+    final rx = u * rxF * grow * (1 + squash * bob);
+    final ry = u * ryF * grow * (1 - squash * bob);
+    final lift = hover ? u * (0.12 + 0.04 * bob) : u * 0.07 + bob * u * 0.025;
+    final baseY = kind == CreatureSpecies.serpent
+        ? groundY - u * 0.36
+        : groundY - ry - lift;
     final body = Rect.fromCenter(
-      center: Offset(cx, cy),
+      center: Offset(cx, baseY),
       width: rx * 2,
       height: ry * 2,
     );
 
     if (card.rarity.isRarePlus) _paintAura(canvas, body, u);
-    _paintShadow(canvas, Offset(cx, groundY), rx, bob);
-    _paintBackFeatures(canvas, body, u);
-    _paintFeet(canvas, body);
-    _paintBody(canvas, body);
-    _paintEars(canvas, body);
-    _paintFrontFeatures(canvas, body, u);
-    _paintFace(canvas, body);
-    _paintSpecular(canvas, body);
+    _paintShadow(
+      canvas,
+      Offset(cx, groundY),
+      hover ? rx * 0.7 : rx * (kind == CreatureSpecies.serpent ? 1.6 : 1),
+      bob,
+    );
+
+    switch (kind) {
+      case CreatureSpecies.dino:
+        _dino(canvas, body, u, dragon: false);
+      case CreatureSpecies.dragon:
+        _dino(canvas, body, u, dragon: true);
+      case CreatureSpecies.bird:
+        _bird(canvas, body);
+      case CreatureSpecies.pig:
+        _pig(canvas, body);
+      case CreatureSpecies.dog:
+        _dog(canvas, body);
+      case CreatureSpecies.bear:
+        _bear(canvas, body);
+      case CreatureSpecies.bunny:
+        _bunny(canvas, body);
+      case CreatureSpecies.cat:
+        _cat(canvas, body);
+      case CreatureSpecies.turtle:
+        _turtle(canvas, body);
+      case CreatureSpecies.golem:
+        _golem(canvas, body);
+      case CreatureSpecies.serpent:
+        _serpent(canvas, body, u, groundY);
+      case CreatureSpecies.sprite:
+        _sprite(canvas, body);
+      case CreatureSpecies.bug:
+        _bug(canvas, body);
+    }
+    _paintElementAccent(canvas, body, u, kind);
+    if (_tier >= Rarity.legendary.index) _crown(canvas, body, kind);
+  }
+
+  // ------------------------------------------------------------ helpers
+
+  double get _faceShift => turn * 0.22;
+
+  /// Tingkat "evolusi" = indeks rarity (0 Common … 5 Master).
+  int get _tier => card.rarity.index;
+
+  /// Mahkota kecil untuk Legendary+.
+  void _crown(Canvas canvas, Rect b, CreatureSpecies kind) {
+    final lift = switch (kind) {
+      CreatureSpecies.bunny => b.height * 0.05,
+      CreatureSpecies.bird || CreatureSpecies.dragon => b.height * 0.3,
+      CreatureSpecies.serpent => b.height * 0.05,
+      _ => b.height * 0.12,
+    };
+    final c = Offset(b.center.dx + turn * b.width * 0.15, b.top - lift);
+    final w = b.width * 0.36;
+    final h = b.height * 0.24;
+    final bob = math.sin(phase * math.pi * 2 * 2) * b.height * 0.015;
+    final crown = Path()
+      ..moveTo(c.dx - w / 2, c.dy + bob)
+      ..lineTo(c.dx - w / 2, c.dy - h * 0.7 + bob)
+      ..lineTo(c.dx - w / 4, c.dy - h * 0.25 + bob)
+      ..lineTo(c.dx, c.dy - h + bob)
+      ..lineTo(c.dx + w / 4, c.dy - h * 0.25 + bob)
+      ..lineTo(c.dx + w / 2, c.dy - h * 0.7 + bob)
+      ..lineTo(c.dx + w / 2, c.dy + bob)
+      ..close();
+    canvas.drawPath(crown, Paint()..color = const Color(0xFFFFC93C));
+    canvas.drawPath(crown, _stroke(b.width * 0.015, const Color(0xFFE09A1A)));
+    canvas.drawCircle(
+      Offset(c.dx, c.dy - h * 0.35 + bob),
+      b.width * 0.035,
+      Paint()..color = const Color(0xFFFF5D8F),
+    );
+  }
+
+  Paint _shade(Rect r, {Color? light, Color? base, Color? dark}) {
+    return Paint()
+      ..shader = RadialGradient(
+        center: Alignment(-0.35 - turn * 0.6, -0.5),
+        radius: 1.05,
+        colors: <Color>[
+          light ?? palette.light,
+          base ?? palette.base,
+          dark ?? palette.dark,
+        ],
+        stops: const <double>[0, 0.5, 1],
+      ).createShader(r);
+  }
+
+  void _blob(Canvas canvas, Rect r, {Color? light, Color? base, Color? dark}) {
+    canvas.drawOval(r, _shade(r, light: light, base: base, dark: dark));
+  }
+
+  Color get _soft => Color.lerp(palette.light, Colors.white, 0.35)!;
+
+  void _belly(Canvas canvas, Rect b, {double w = 0.56, double h = 0.5}) {
+    final belly = Rect.fromCenter(
+      center: b.center + Offset(turn * b.width * 0.12, b.height * 0.2),
+      width: b.width * w,
+      height: b.height * h,
+    );
+    canvas.drawOval(
+      belly,
+      Paint()..color = palette.light.withValues(alpha: 0.85),
+    );
+  }
+
+  void _rim(Canvas canvas, Rect b) {
+    canvas.drawArc(
+      b.deflate(b.width * 0.02),
+      -0.1 - turn,
+      math.pi * 0.75,
+      false,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = b.width * 0.03
+        ..strokeCap = StrokeCap.round
+        ..color = palette.accent.withValues(alpha: 0.4),
+    );
+  }
+
+  void _specular(Canvas canvas, Rect b, {double y = -0.3}) {
+    final c = b.center + Offset(-b.width * (0.22 + turn * 0.3), b.height * y);
+    canvas.save();
+    canvas.translate(c.dx, c.dy);
+    canvas.rotate(-0.5);
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset.zero,
+        width: b.width * 0.22,
+        height: b.height * 0.12,
+      ),
+      Paint()
+        ..color = Colors.white.withValues(alpha: 0.55)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, b.width * 0.025),
+    );
+    canvas.restore();
+  }
+
+  bool get _blinking => phase > 0.9 && phase < 0.94;
+
+  /// Sepasang mata ala chibi dengan foreshortening saat menoleh.
+  void _eyes(
+    Canvas canvas,
+    Offset center,
+    double spacing,
+    double w,
+    double h, {
+    bool slit = false,
+    Color? glow,
+  }) {
+    final eh = _blinking ? h * 0.12 : h;
+    for (final dir in const <double>[-1, 1]) {
+      final fore = 1 - (dir * turn).clamp(0.0, 1.0) * 0.35;
+      final c = center + Offset(dir * spacing, 0);
+      final eye = Rect.fromCenter(center: c, width: w * fore, height: eh);
+      if (glow != null) {
+        canvas.drawOval(
+          eye.inflate(w * 0.25),
+          Paint()
+            ..color = glow.withValues(alpha: 0.45)
+            ..maskFilter = MaskFilter.blur(BlurStyle.normal, w * 0.3),
+        );
+        canvas.drawOval(eye, Paint()..color = glow);
+        canvas.drawOval(
+          eye.deflate(w * 0.18),
+          Paint()..color = Colors.white.withValues(alpha: 0.8),
+        );
+        continue;
+      }
+      canvas.drawOval(eye, Paint()..color = _ink);
+      if (_blinking) continue;
+      if (slit) {
+        canvas.drawOval(
+          Rect.fromCenter(center: c, width: w * 0.55 * fore, height: eh * 0.9),
+          Paint()..color = palette.accent,
+        );
+        canvas.drawOval(
+          Rect.fromCenter(center: c, width: w * 0.16, height: eh * 0.8),
+          Paint()..color = _ink,
+        );
+      } else {
+        canvas.drawOval(
+          Rect.fromCenter(
+            center: c + Offset(0, eh * 0.2),
+            width: w * 0.6 * fore,
+            height: eh * 0.4,
+          ),
+          Paint()..color = palette.dark.withValues(alpha: 0.9),
+        );
+      }
+      canvas.drawCircle(
+        c + Offset(-w * 0.18, -eh * 0.2),
+        w * 0.24,
+        Paint()..color = Colors.white,
+      );
+      canvas.drawCircle(
+        c + Offset(w * 0.16, eh * 0.18),
+        w * 0.1,
+        Paint()..color = Colors.white.withValues(alpha: 0.85),
+      );
+    }
+  }
+
+  void _blush(Canvas canvas, Offset center, double spacing, double w) {
+    final paint = Paint()
+      ..color = const Color(0xFFFF7FA0).withValues(alpha: 0.5);
+    for (final dir in const <double>[-1, 1]) {
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: center + Offset(dir * spacing, 0),
+          width: w,
+          height: w * 0.6,
+        ),
+        paint,
+      );
+    }
+  }
+
+  Paint _stroke(double width, Color color) => Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = math.max(1, width)
+    ..strokeCap = StrokeCap.round
+    ..strokeJoin = StrokeJoin.round
+    ..color = color;
+
+  void _smile(Canvas canvas, Offset c, double w) {
+    canvas.drawPath(
+      Path()
+        ..moveTo(c.dx - w, c.dy)
+        ..quadraticBezierTo(c.dx - w / 2, c.dy + w * 0.9, c.dx, c.dy)
+        ..quadraticBezierTo(c.dx + w / 2, c.dy + w * 0.9, c.dx + w, c.dy),
+      _stroke(w * 0.25, _ink),
+    );
+  }
+
+  /// Wajah standar: mata, pipi, mulut.
+  void _face(
+    Canvas canvas,
+    Rect b, {
+    double eyeY = -0.08,
+    double eyeSpread = 0.19,
+    double eyeW = 0.14,
+    double eyeH = 0.27,
+    bool mouth = true,
+    bool slit = false,
+  }) {
+    final fx = b.width * _faceShift;
+    final eyeC = Offset(b.center.dx + fx, b.center.dy + b.height * eyeY);
+    _eyes(
+      canvas,
+      eyeC,
+      b.width * eyeSpread,
+      b.width * eyeW,
+      b.height * eyeH,
+      slit: slit,
+    );
+    _blush(
+      canvas,
+      eyeC + Offset(0, b.height * 0.2),
+      b.width * (eyeSpread + 0.14),
+      b.width * 0.13,
+    );
+    if (mouth) _smile(canvas, eyeC + Offset(0, b.height * 0.2), b.width * 0.09);
+  }
+
+  void _feet(
+    Canvas canvas,
+    Rect b, {
+    double spread = 0.24,
+    double w = 0.26,
+    double h = 0.16,
+    Color? color,
+  }) {
+    final paint = Paint()..color = color ?? palette.dark;
+    for (final dir in const <double>[-1, 1]) {
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: Offset(
+            b.center.dx + dir * b.width * spread + turn * b.width * 0.05,
+            b.bottom - b.height * 0.02,
+          ),
+          width: b.width * w,
+          height: b.height * h,
+        ),
+        paint,
+      );
+    }
+  }
+
+  void _arms(Canvas canvas, Rect b, {double size = 1, Color? color}) {
+    final paint = Paint()..color = color ?? palette.base;
+    for (final dir in const <double>[-1, 1]) {
+      final swing = math.sin(phase * math.pi * 2 + dir) * 0.15;
+      canvas.save();
+      canvas.translate(
+        b.center.dx + dir * b.width * 0.46,
+        b.center.dy + b.height * 0.12,
+      );
+      canvas.rotate(dir * (0.5 + swing));
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: Offset.zero,
+          width: b.width * 0.14 * size,
+          height: b.height * 0.26 * size,
+        ),
+        paint,
+      );
+      canvas.restore();
+    }
+  }
+
+  Path _triangle(Offset a, Offset b, Offset c) => Path()
+    ..moveTo(a.dx, a.dy)
+    ..lineTo(b.dx, b.dy)
+    ..lineTo(c.dx, c.dy)
+    ..close();
+
+  double get _sway => math.sin(phase * math.pi * 2 * 2);
+
+  // ------------------------------------------------------------ species
+
+  /// Dinosaurus chibi (atau naga bila [dragon]): duri punggung, ekor panjang,
+  /// gigi kecil; naga menambah tanduk & sayap kelelawar.
+  void _dino(Canvas canvas, Rect b, double u, {required bool dragon}) {
+    final tailSway = _sway * 0.08;
+    // Sayap naga di belakang.
+    if (dragon) {
+      final flap = _sway * 0.25;
+      for (final dir in const <double>[-1, 1]) {
+        canvas.save();
+        canvas.translate(
+          b.center.dx + dir * b.width * 0.3,
+          b.center.dy - b.height * 0.15,
+        );
+        canvas.rotate(dir * (0.35 + flap));
+        final w = b.width * 0.7;
+        final h = b.height * 0.7;
+        final wing = Path()
+          ..moveTo(0, 0)
+          ..lineTo(dir * w * 0.25, -h)
+          ..quadraticBezierTo(dir * w * 0.6, -h * 0.75, dir * w, -h * 0.6)
+          ..quadraticBezierTo(
+              dir * w * 0.7, -h * 0.35, dir * w * 0.85, -h * 0.05)
+          ..quadraticBezierTo(dir * w * 0.45, -h * 0.1, 0, 0)
+          ..close();
+        canvas.drawPath(wing, Paint()..color = palette.dark);
+        canvas.drawPath(
+          wing,
+          Paint()..color = palette.accent.withValues(alpha: 0.35),
+        );
+        canvas.drawLine(
+          Offset.zero,
+          Offset(dir * w * 0.25, -h),
+          _stroke(b.width * 0.03, palette.dark),
+        );
+        canvas.restore();
+      }
+    }
+    // Ekor meruncing ke kanan-bawah.
+    final tailBase =
+        Offset(b.right - b.width * 0.15, b.bottom - b.height * 0.25);
+    final tip = Offset(
+      b.right + b.width * 0.5,
+      b.bottom - b.height * (0.55 + tailSway),
+    );
+    final tail = Path()
+      ..moveTo(tailBase.dx - b.width * 0.1, tailBase.dy - b.height * 0.22)
+      ..quadraticBezierTo(
+        b.right + b.width * 0.25,
+        b.bottom - b.height * 0.05,
+        tip.dx,
+        tip.dy,
+      )
+      ..quadraticBezierTo(
+        b.right + b.width * 0.15,
+        b.bottom + b.height * 0.08,
+        tailBase.dx - b.width * 0.15,
+        tailBase.dy + b.height * 0.15,
+      )
+      ..close();
+    canvas.drawPath(
+        tail, _shade(Rect.fromPoints(tailBase, tip).inflate(b.width * 0.2)));
+    if (dragon) {
+      canvas.drawPath(
+        _triangle(
+          tip + Offset(-b.width * 0.08, -b.height * 0.05),
+          tip + Offset(b.width * 0.1, -b.height * 0.12),
+          tip + Offset(b.width * 0.02, b.height * 0.1),
+        ),
+        Paint()..color = palette.dark,
+      );
+    }
+    // Duri punggung (dari kepala ke ekor).
+    final spike = Paint()..color = dragon ? palette.dark : palette.accent;
+    for (var i = 0; i < 4; i++) {
+      final angle = -math.pi / 2 + 0.35 + i * 0.38 - turn * 0.3;
+      final base = b.center +
+          Offset(math.cos(angle) * b.width * 0.48,
+              math.sin(angle) * b.height * 0.48);
+      final out = Offset(math.cos(angle), math.sin(angle));
+      final side = Offset(-out.dy, out.dx);
+      final s = b.width * (0.13 - i * 0.015);
+      canvas.drawPath(
+        _triangle(
+            base + side * s * 0.7, base + out * s * 1.5, base - side * s * 0.7),
+        spike,
+      );
+    }
+    _feet(canvas, b, spread: 0.22, w: 0.3, h: 0.18);
+    // Cakar.
+    final claw = Paint()..color = Colors.white.withValues(alpha: 0.9);
+    for (final dir in const <double>[-1, 1]) {
+      final fc = Offset(
+        b.center.dx + dir * b.width * 0.22 + turn * b.width * 0.05,
+        b.bottom + b.height * 0.04,
+      );
+      for (var k = -1; k <= 1; k++) {
+        canvas.drawCircle(
+            fc + Offset(k * b.width * 0.06, 0), b.width * 0.022, claw);
+      }
+    }
+    _blob(canvas, b);
+    _belly(canvas, b, w: 0.5, h: 0.52);
+    // Garis-garis perut.
+    for (var i = 0; i < 3; i++) {
+      final y = b.center.dy + b.height * (0.12 + i * 0.12);
+      canvas.drawLine(
+        Offset(b.center.dx - b.width * 0.12 + turn * b.width * 0.1, y),
+        Offset(b.center.dx + b.width * 0.12 + turn * b.width * 0.1, y),
+        _stroke(b.width * 0.015, palette.base.withValues(alpha: 0.5)),
+      );
+    }
+    if (dragon) {
+      final horn = Paint()..color = palette.accent;
+      for (final dir in const <double>[-1, 1]) {
+        final base = Offset(
+          b.center.dx + dir * b.width * 0.2 + turn * b.width * 0.1,
+          b.top + b.height * 0.12,
+        );
+        canvas.drawPath(
+          Path()
+            ..moveTo(base.dx - b.width * 0.06, base.dy)
+            ..quadraticBezierTo(
+              base.dx + dir * b.width * 0.02,
+              base.dy - b.height * 0.3,
+              base.dx + dir * b.width * 0.16,
+              base.dy - b.height * 0.36,
+            )
+            ..quadraticBezierTo(
+              base.dx + dir * b.width * 0.05,
+              base.dy - b.height * 0.12,
+              base.dx + b.width * 0.06,
+              base.dy,
+            )
+            ..close(),
+          horn,
+        );
+      }
+    }
+    _arms(canvas, b, size: 0.8);
+    _face(canvas, b, eyeY: -0.12, eyeSpread: 0.18, mouth: false);
+    // Moncong + lubang hidung + gigi.
+    final fx = b.width * _faceShift;
+    final m = Offset(b.center.dx + fx, b.center.dy + b.height * 0.1);
+    for (final dir in const <double>[-1, 1]) {
+      canvas.drawCircle(
+        m + Offset(dir * b.width * 0.05, -b.height * 0.03),
+        b.width * 0.018,
+        Paint()..color = palette.dark,
+      );
+    }
+    final mouth = Path()
+      ..moveTo(m.dx - b.width * 0.13, m.dy + b.height * 0.05)
+      ..quadraticBezierTo(m.dx, m.dy + b.height * 0.13, m.dx + b.width * 0.13,
+          m.dy + b.height * 0.05);
+    canvas.drawPath(mouth, _stroke(b.width * 0.022, _ink));
+    final tooth = Paint()..color = Colors.white;
+    for (final dir in const <double>[-1, 1]) {
+      final t = Offset(m.dx + dir * b.width * 0.08, m.dy + b.height * 0.075);
+      canvas.drawPath(
+        _triangle(
+          t + Offset(-b.width * 0.022, 0),
+          t + Offset(b.width * 0.022, 0),
+          t + Offset(0, b.height * 0.06),
+        ),
+        tooth,
+      );
+    }
+    _rim(canvas, b);
+    _specular(canvas, b);
+  }
+
+  /// Burung bulat: jambul, paruh, sayap mengepak, ekor kipas, kaki ranting.
+  void _bird(Canvas canvas, Rect b) {
+    const beak = Color(0xFFFFB238);
+    if (_tier >= Rarity.legendary.index) {
+      // Pita ekor panjang berkibar.
+      for (final k in const <double>[-1, 1]) {
+        final start =
+            Offset(b.right - b.width * 0.1, b.center.dy + b.height * 0.2);
+        final wave = math.sin(phase * math.pi * 2 + k) * b.height * 0.15;
+        canvas.drawPath(
+          Path()
+            ..moveTo(start.dx, start.dy)
+            ..cubicTo(
+              start.dx + b.width * 0.4,
+              start.dy - b.height * 0.2 + wave,
+              start.dx + b.width * 0.5,
+              start.dy + b.height * 0.4 + k * b.height * 0.1,
+              start.dx + b.width * 0.85,
+              start.dy + b.height * 0.1 + wave,
+            ),
+          _stroke(
+              b.width * 0.05, k < 0 ? palette.accent : const Color(0xFFFFC93C)),
+        );
+      }
+    }
+    // Ekor kipas.
+    for (var i = -1; i <= 1; i++) {
+      canvas.save();
+      canvas.translate(b.right - b.width * 0.1, b.center.dy + b.height * 0.25);
+      canvas.rotate(-0.4 + i * 0.35 + _sway * 0.06);
+      canvas.drawOval(
+        Rect.fromLTWH(0, -b.height * 0.1, b.width * 0.5, b.height * 0.2),
+        Paint()..color = i == 0 ? palette.accent : palette.dark,
+      );
+      canvas.restore();
+    }
+    // Kaki ranting.
+    final legs = _stroke(b.width * 0.035, beak);
+    for (final dir in const <double>[-1, 1]) {
+      final top = Offset(
+          b.center.dx + dir * b.width * 0.15, b.bottom - b.height * 0.05);
+      final foot = top + Offset(0, b.height * 0.16);
+      canvas.drawLine(top, foot, legs);
+      for (final k in const <double>[-1, 0, 1]) {
+        canvas.drawLine(
+            foot, foot + Offset(k * b.width * 0.07, b.height * 0.04), legs);
+      }
+    }
+    _blob(canvas, b);
+    _belly(canvas, b, w: 0.6, h: 0.55);
+    // Jambul tiga bulu.
+    for (var i = -1; i <= 1; i++) {
+      canvas.save();
+      canvas.translate(
+          b.center.dx + turn * b.width * 0.15, b.top + b.height * 0.08);
+      canvas.rotate(i * 0.45 + _sway * 0.05);
+      final h = b.height * (i == 0 ? 0.42 : 0.32);
+      canvas.drawPath(
+        Path()
+          ..moveTo(-b.width * 0.05, 0)
+          ..quadraticBezierTo(-b.width * 0.06, -h * 0.7, 0, -h)
+          ..quadraticBezierTo(b.width * 0.06, -h * 0.7, b.width * 0.05, 0)
+          ..close(),
+        Paint()..color = i == 0 ? palette.accent : palette.base,
+      );
+      canvas.restore();
+    }
+    // Sayap di samping.
+    final flap = _sway * 0.35;
+    for (final dir in const <double>[-1, 1]) {
+      canvas.save();
+      canvas.translate(
+          b.center.dx + dir * b.width * 0.42, b.center.dy + b.height * 0.02);
+      canvas.rotate(dir * (0.35 + flap));
+      final wing = Rect.fromCenter(
+        center: Offset(dir * b.width * 0.08, b.height * 0.1),
+        width: b.width * 0.3,
+        height: b.height * 0.55,
+      );
+      canvas.drawOval(
+          wing, _shade(wing, base: palette.base, dark: palette.dark));
+      canvas.drawOval(
+        wing.deflate(b.width * 0.04).shift(Offset(0, b.height * 0.08)),
+        Paint()..color = palette.accent.withValues(alpha: 0.5),
+      );
+      canvas.restore();
+    }
+    if (_tier >= 2 || card.name.toLowerCase().contains('griffon')) {
+      for (final dir in const <double>[-1, 1]) {
+        final base = Offset(
+          b.center.dx + dir * b.width * 0.3 + turn * b.width * 0.08,
+          b.top + b.height * 0.18,
+        );
+        canvas.drawPath(
+          _triangle(
+            base + Offset(-b.width * 0.09, 0),
+            base + Offset(dir * b.width * 0.1, -b.height * 0.32),
+            base + Offset(b.width * 0.09, 0),
+          ),
+          Paint()..color = palette.dark,
+        );
+      }
+    }
+    _face(canvas, b, eyeY: -0.12, eyeSpread: 0.2, mouth: false);
+    // Paruh dua bagian.
+    final fx = b.width * _faceShift;
+    final p = Offset(b.center.dx + fx, b.center.dy + b.height * 0.06);
+    final open = (math.sin(phase * math.pi * 6) * 0.5 + 0.5) * b.height * 0.03;
+    canvas.drawPath(
+      _triangle(
+        p + Offset(-b.width * 0.09, 0),
+        p + Offset(b.width * 0.09, 0),
+        p + Offset(0, b.height * 0.13),
+      ),
+      Paint()..color = _darken(beak),
+    );
+    canvas.drawPath(
+      _triangle(
+        p + Offset(-b.width * 0.1, -open),
+        p + Offset(b.width * 0.1, -open),
+        p + Offset(0, b.height * 0.09 - open),
+      ),
+      Paint()..color = beak,
+    );
+    _specular(canvas, b);
+  }
+
+  /// Babi gempal: telinga lipat, moncong dengan dua lubang, ekor keriting.
+  void _pig(Canvas canvas, Rect b) {
+    final pink = Color.lerp(palette.light, const Color(0xFFFFA3BE), 0.45)!;
+    // Ekor keriting.
+    final tail = Path();
+    final tc = Offset(b.right + b.width * 0.02, b.center.dy + b.height * 0.05);
+    for (var i = 0; i <= 20; i++) {
+      final t = i / 20;
+      final a = t * math.pi * 3 + phase * math.pi * 2;
+      final r = b.width * 0.09 * (1 - t * 0.6);
+      final pt =
+          tc + Offset(t * b.width * 0.12 + math.cos(a) * r, math.sin(a) * r);
+      if (i == 0) {
+        tail.moveTo(pt.dx, pt.dy);
+      } else {
+        tail.lineTo(pt.dx, pt.dy);
+      }
+    }
+    canvas.drawPath(tail, _stroke(b.width * 0.04, palette.base));
+    _feet(canvas, b, spread: 0.28, w: 0.2, h: 0.18);
+    _blob(canvas, b);
+    _belly(canvas, b, w: 0.62, h: 0.45);
+    // Telinga segitiga terlipat ke depan.
+    for (final dir in const <double>[-1, 1]) {
+      final base = Offset(
+        b.center.dx + dir * b.width * 0.26 + turn * b.width * 0.08,
+        b.top + b.height * 0.1,
+      );
+      final fold = math.sin(phase * math.pi * 4 + dir) * b.height * 0.02;
+      canvas.drawPath(
+        _triangle(
+          base + Offset(-b.width * 0.12, b.height * 0.05),
+          base + Offset(dir * b.width * 0.2, -b.height * 0.18 + fold),
+          base + Offset(b.width * 0.12, b.height * 0.05),
+        ),
+        Paint()..color = palette.dark,
+      );
+      canvas.drawPath(
+        _triangle(
+          base + Offset(-b.width * 0.06, b.height * 0.04),
+          base + Offset(dir * b.width * 0.13, -b.height * 0.1 + fold),
+          base + Offset(b.width * 0.06, b.height * 0.04),
+        ),
+        Paint()..color = pink,
+      );
+    }
+    _face(canvas, b,
+        eyeY: -0.14, eyeSpread: 0.21, eyeW: 0.12, eyeH: 0.22, mouth: false);
+    final fx = b.width * _faceShift;
+    final snout = Rect.fromCenter(
+      center: Offset(b.center.dx + fx * 1.2, b.center.dy + b.height * 0.13),
+      width: b.width * 0.34,
+      height: b.height * 0.26,
+    );
+    canvas.drawOval(snout,
+        _shade(snout, light: Colors.white, base: pink, dark: _darken(pink)));
+    for (final dir in const <double>[-1, 1]) {
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: snout.center + Offset(dir * snout.width * 0.2, 0),
+          width: snout.width * 0.14,
+          height: snout.height * 0.36,
+        ),
+        Paint()..color = _darken(pink, 0.35),
+      );
+    }
+    _smile(canvas, snout.bottomCenter + Offset(0, b.height * 0.05),
+        b.width * 0.06);
+    _rim(canvas, b);
+    _specular(canvas, b);
+  }
+
+  /// Anak anjing: telinga terkulai, moncong, hidung, ekor bergoyang.
+  void _dog(Canvas canvas, Rect b) {
+    canvas.save();
+    canvas.translate(b.right - b.width * 0.08, b.center.dy + b.height * 0.1);
+    canvas.rotate(-0.9 + _sway * 0.35);
+    canvas.drawOval(
+      Rect.fromLTWH(
+          -b.width * 0.06, -b.height * 0.42, b.width * 0.14, b.height * 0.42),
+      Paint()..color = palette.base,
+    );
+    canvas.restore();
+    _feet(canvas, b);
+    _blob(canvas, b);
+    _belly(canvas, b);
+    for (final dir in const <double>[-1, 1]) {
+      canvas.save();
+      canvas.translate(
+        b.center.dx + dir * b.width * 0.36 + turn * b.width * 0.08,
+        b.top + b.height * 0.18,
+      );
+      canvas.rotate(dir * (0.25 + math.sin(phase * math.pi * 4 + dir) * 0.08));
+      canvas.drawOval(
+        Rect.fromLTWH(-b.width * 0.1, 0, b.width * 0.2, b.height * 0.5),
+        Paint()..color = palette.dark,
+      );
+      canvas.restore();
+    }
+    _face(canvas, b, eyeY: -0.12, mouth: false);
+    _muzzle(canvas, b);
+    _arms(canvas, b, size: 0.8);
+    _rim(canvas, b);
+    _specular(canvas, b);
+  }
+
+  void _muzzle(Canvas canvas, Rect b, {double size = 1}) {
+    final fx = b.width * _faceShift;
+    final m = Rect.fromCenter(
+      center: Offset(b.center.dx + fx * 1.15, b.center.dy + b.height * 0.13),
+      width: b.width * 0.36 * size,
+      height: b.height * 0.25 * size,
+    );
+    canvas.drawOval(m, Paint()..color = _soft);
+    final nose = Rect.fromCenter(
+      center: m.center + Offset(0, -m.height * 0.2),
+      width: m.width * 0.32,
+      height: m.height * 0.26,
+    );
+    canvas.drawOval(nose, Paint()..color = _ink);
+    canvas.drawCircle(
+      nose.center + Offset(-nose.width * 0.2, -nose.height * 0.2),
+      nose.width * 0.12,
+      Paint()..color = Colors.white.withValues(alpha: 0.8),
+    );
+    _smile(canvas, m.center + Offset(0, m.height * 0.12), b.width * 0.06);
+  }
+
+  /// Beruang: telinga bulat, moncong, ekor bulat kecil.
+  void _bear(Canvas canvas, Rect b) {
+    canvas.drawCircle(
+      Offset(b.right - b.width * 0.05, b.center.dy + b.height * 0.3),
+      b.width * 0.1,
+      Paint()..color = palette.base,
+    );
+    _feet(canvas, b, spread: 0.26, w: 0.28);
+    for (final dir in const <double>[-1, 1]) {
+      final c = Offset(
+        b.center.dx + dir * b.width * 0.3 + turn * b.width * 0.08,
+        b.top + b.height * 0.08,
+      );
+      canvas.drawCircle(c, b.width * 0.15,
+          _shade(Rect.fromCircle(center: c, radius: b.width * 0.15)));
+      canvas.drawCircle(c, b.width * 0.08, Paint()..color = _soft);
+    }
+    _blob(canvas, b);
+    _belly(canvas, b);
+    _face(canvas, b, eyeY: -0.12, eyeW: 0.12, eyeH: 0.22, mouth: false);
+    _muzzle(canvas, b, size: 1.05);
+    _arms(canvas, b);
+    _rim(canvas, b);
+    _specular(canvas, b);
+  }
+
+  /// Kelinci: telinga panjang tegak, gigi kelinci, ekor kapas.
+  void _bunny(Canvas canvas, Rect b) {
+    canvas.drawCircle(
+      Offset(b.right, b.center.dy + b.height * 0.3),
+      b.width * 0.11,
+      Paint()..color = Colors.white,
+    );
+    _feet(canvas, b, spread: 0.22, w: 0.34, h: 0.16);
+    for (final dir in const <double>[-1, 1]) {
+      canvas.save();
+      canvas.translate(
+        b.center.dx + dir * b.width * 0.17 + turn * b.width * 0.08,
+        b.top + b.height * 0.1,
+      );
+      canvas.rotate(dir * (0.18 + math.sin(phase * math.pi * 2 + dir) * 0.08));
+      final ear = Rect.fromLTWH(
+          -b.width * 0.1, -b.height * 0.85, b.width * 0.2, b.height * 0.9);
+      canvas.drawOval(ear, _shade(ear));
+      canvas.drawOval(
+        ear.deflate(b.width * 0.045),
+        Paint()..color = const Color(0xFFFFB3C7).withValues(alpha: 0.85),
+      );
+      canvas.restore();
+    }
+    _blob(canvas, b);
+    _belly(canvas, b);
+    _face(canvas, b, eyeY: -0.06, mouth: false);
+    final fx = b.width * _faceShift;
+    final m = Offset(b.center.dx + fx, b.center.dy + b.height * 0.13);
+    canvas.drawPath(
+      _triangle(
+        m + Offset(-b.width * 0.03, -b.height * 0.03),
+        m + Offset(b.width * 0.03, -b.height * 0.03),
+        m,
+      ),
+      Paint()..color = const Color(0xFFFF7FA0),
+    );
+    _smile(canvas, m + Offset(0, b.height * 0.01), b.width * 0.06);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(
+          center: m + Offset(0, b.height * 0.08),
+          width: b.width * 0.08,
+          height: b.height * 0.08,
+        ),
+        Radius.circular(b.width * 0.015),
+      ),
+      Paint()..color = Colors.white,
+    );
+    _arms(canvas, b, size: 0.75);
+    _rim(canvas, b);
+    _specular(canvas, b);
+  }
+
+  /// Kucing: telinga runcing, kumis, pupil celah, ekor melengkung.
+  void _cat(Canvas canvas, Rect b) {
+    final tail = Path()
+      ..moveTo(b.right - b.width * 0.1, b.bottom - b.height * 0.15)
+      ..cubicTo(
+        b.right + b.width * 0.4,
+        b.bottom,
+        b.right + b.width * 0.3,
+        b.top + b.height * (0.1 + _sway * 0.08),
+        b.right + b.width * 0.15,
+        b.top - b.height * 0.05,
+      );
+    canvas.drawPath(tail, _stroke(b.width * 0.1, palette.base));
+    canvas.drawPath(
+        tail, _stroke(b.width * 0.05, palette.light.withValues(alpha: 0.35)));
+    _feet(canvas, b, spread: 0.2, w: 0.22, h: 0.15);
+    _blob(canvas, b);
+    _belly(canvas, b, w: 0.5);
+    for (final dir in const <double>[-1, 1]) {
+      final base = Offset(
+        b.center.dx + dir * b.width * 0.28 + turn * b.width * 0.08,
+        b.top + b.height * 0.16,
+      );
+      canvas.drawPath(
+        _triangle(
+          base + Offset(-b.width * 0.12, 0),
+          base + Offset(dir * b.width * 0.06, -b.height * 0.42),
+          base + Offset(b.width * 0.12, 0),
+        ),
+        _shade(Rect.fromCircle(center: base, radius: b.width * 0.3)),
+      );
+      canvas.drawPath(
+        _triangle(
+          base + Offset(-b.width * 0.06, 0),
+          base + Offset(dir * b.width * 0.04, -b.height * 0.28),
+          base + Offset(b.width * 0.06, 0),
+        ),
+        Paint()..color = const Color(0xFFFFB3C7),
+      );
+    }
+    _face(canvas, b,
+        eyeY: -0.08, eyeW: 0.16, eyeH: 0.22, slit: true, mouth: false);
+    final fx = b.width * _faceShift;
+    final n = Offset(b.center.dx + fx, b.center.dy + b.height * 0.1);
+    canvas.drawPath(
+      _triangle(
+        n + Offset(-b.width * 0.03, 0),
+        n + Offset(b.width * 0.03, 0),
+        n + Offset(0, b.height * 0.04),
+      ),
+      Paint()..color = const Color(0xFFFF7FA0),
+    );
+    _smile(canvas, n + Offset(0, b.height * 0.05), b.width * 0.06);
+    final whisker = _stroke(b.width * 0.012, _ink.withValues(alpha: 0.6));
+    for (final dir in const <double>[-1, 1]) {
+      for (final k in const <double>[-1, 0, 1]) {
+        canvas.drawLine(
+          n + Offset(dir * b.width * 0.12, k * b.height * 0.04),
+          n + Offset(dir * b.width * 0.36, k * b.height * 0.07),
+          whisker,
+        );
+      }
+    }
+    _rim(canvas, b);
+    _specular(canvas, b);
+  }
+
+  /// Kura-kura: tempurung kubah berpola heksagon, kepala menyembul di depan.
+  void _turtle(Canvas canvas, Rect b) {
+    // Kaki.
+    for (final dir in const <double>[-1, 1]) {
+      for (final front in const <double>[-1, 1]) {
+        canvas.drawOval(
+          Rect.fromCenter(
+            center: Offset(
+              b.center.dx + dir * b.width * (front < 0 ? 0.35 : 0.2),
+              b.bottom - b.height * 0.02,
+            ),
+            width: b.width * 0.18,
+            height: b.height * 0.24,
+          ),
+          Paint()..color = palette.base,
+        );
+      }
+    }
+    final shell =
+        Rect.fromLTRB(b.left, b.top, b.right, b.bottom + b.height * 0.1);
+    final shellColor = _darken(palette.accent, 0.1);
+    canvas.drawOval(
+      shell,
+      _shade(shell,
+          light: palette.accent,
+          base: shellColor,
+          dark: _darken(shellColor, 0.25)),
+    );
+    final pattern = _stroke(b.width * 0.02, _darken(shellColor, 0.2));
+    final c = shell.center + Offset(turn * b.width * 0.1, -b.height * 0.05);
+    final hex = Path();
+    for (var i = 0; i < 6; i++) {
+      final a = i * math.pi / 3;
+      final pt = c +
+          Offset(math.cos(a) * b.width * 0.16, math.sin(a) * b.height * 0.22);
+      if (i == 0) {
+        hex.moveTo(pt.dx, pt.dy);
+      } else {
+        hex.lineTo(pt.dx, pt.dy);
+      }
+      canvas.drawLine(
+        pt,
+        c + Offset(math.cos(a) * b.width * 0.42, math.sin(a) * b.height * 0.5),
+        pattern,
+      );
+    }
+    hex.close();
+    canvas.drawPath(hex, pattern);
+    if (_tier >= 2) {
+      final spike = Paint()..color = palette.light;
+      for (var i = 0; i < 5; i++) {
+        final a = math.pi + 0.35 + i * (math.pi - 0.7) / 4;
+        final base = shell.center +
+            Offset(math.cos(a) * shell.width * 0.47,
+                math.sin(a) * shell.height * 0.47);
+        final out = Offset(math.cos(a), math.sin(a));
+        final side = Offset(-out.dy, out.dx);
+        final sz = b.width * 0.07;
+        canvas.drawPath(
+          _triangle(base + side * sz, base + out * sz * 1.8, base - side * sz),
+          spike,
+        );
+      }
+    }
+    // Tepi tempurung.
+    canvas.drawArc(
+      shell.deflate(b.width * 0.01),
+      0.15,
+      math.pi - 0.3,
+      false,
+      _stroke(b.width * 0.06, palette.light.withValues(alpha: 0.8)),
+    );
+    _specular(canvas, shell, y: -0.32);
+    // Kepala.
+    final head = Rect.fromCenter(
+      center: Offset(
+        b.center.dx + turn * b.width * 0.3,
+        b.bottom +
+            b.height * 0.02 +
+            math.sin(phase * math.pi * 2) * b.height * 0.03,
+      ),
+      width: b.width * 0.55,
+      height: b.height * 0.75,
+    );
+    _blob(canvas, head);
+    _face(canvas, head, eyeY: -0.05, eyeSpread: 0.2, eyeW: 0.16, eyeH: 0.3);
+    _specular(canvas, head);
+  }
+
+  /// Golem: tubuh balok batu, retakan, batu bahu, lengan besar, mata menyala.
+  void _golem(Canvas canvas, Rect b) {
+    final rock = palette.accent;
+    for (final dir in const <double>[-1, 1]) {
+      final arm = Rect.fromCenter(
+        center: Offset(
+            b.center.dx + dir * b.width * 0.58, b.center.dy + b.height * 0.15),
+        width: b.width * 0.3,
+        height: b.height * 0.6,
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(arm, Radius.circular(arm.width * 0.4)),
+        _shade(arm,
+            light: Color.lerp(rock, Colors.white, 0.35),
+            base: rock,
+            dark: _darken(rock, 0.25)),
+      );
+    }
+    _feet(canvas, b, spread: 0.25, w: 0.3, h: 0.2, color: _darken(rock, 0.2));
+    final rr = RRect.fromRectAndRadius(b, Radius.circular(b.width * 0.28));
+    canvas.drawRRect(
+      rr,
+      _tier >= 2
+          ? _shade(
+              b,
+              light: palette.base,
+              base: _darken(palette.base, 0.2),
+              dark: _darken(palette.dark, 0.15),
+            )
+          : _shade(b),
+    );
+    if (_tier >= 3) {
+      // Rune bercahaya.
+      final rune = _stroke(b.width * 0.02,
+          palette.accent == rock ? const Color(0xFFFFE066) : palette.accent);
+      final rc = b.center + Offset(turn * b.width * 0.1, b.height * 0.22);
+      canvas.drawCircle(rc, b.width * 0.1, rune);
+      canvas.drawLine(rc + Offset(0, -b.width * 0.16),
+          rc + Offset(0, b.width * 0.16), rune);
+    }
+    if (_tier == 1) {
+      // Topi lumut.
+      canvas.save();
+      canvas.clipRRect(rr);
+      canvas.drawOval(
+        Rect.fromCenter(
+            center: Offset(b.center.dx, b.top),
+            width: b.width * 1.1,
+            height: b.height * 0.5),
+        Paint()..color = const Color(0xFF6CC644),
+      );
+      canvas.restore();
+    }
+    if (_tier >= 2) {
+      // Kristal di kepala.
+      final crystal = Paint()..color = const Color(0xFF8FE3FF);
+      final edge = _stroke(b.width * 0.012, const Color(0xFF3FA9F0));
+      for (final (dx, hh) in <(double, double)>[
+        (-0.18, 0.28),
+        (0.0, 0.4),
+        (0.18, 0.24)
+      ]) {
+        final base = Offset(b.center.dx + b.width * dx + turn * b.width * 0.1,
+            b.top + b.height * 0.04);
+        final path = _triangle(
+          base + Offset(-b.width * 0.06, 0),
+          base + Offset(0, -b.height * hh),
+          base + Offset(b.width * 0.06, 0),
+        );
+        canvas.drawPath(path, crystal);
+        canvas.drawPath(path, edge);
+      }
+    }
+    // Retakan.
+    final crack = _stroke(b.width * 0.018, palette.dark.withValues(alpha: 0.6));
+    canvas.drawPath(
+      Path()
+        ..moveTo(b.left + b.width * 0.2, b.top + b.height * 0.25)
+        ..lineTo(b.left + b.width * 0.28, b.top + b.height * 0.38)
+        ..lineTo(b.left + b.width * 0.22, b.top + b.height * 0.5),
+      crack,
+    );
+    canvas.drawPath(
+      Path()
+        ..moveTo(b.right - b.width * 0.18, b.bottom - b.height * 0.3)
+        ..lineTo(b.right - b.width * 0.28, b.bottom - b.height * 0.2)
+        ..lineTo(b.right - b.width * 0.22, b.bottom - b.height * 0.1),
+      crack,
+    );
+    // Batu bahu.
+    for (final dir in const <double>[-1, 1]) {
+      final c =
+          Offset(b.center.dx + dir * b.width * 0.42, b.top + b.height * 0.15);
+      final r = Rect.fromCircle(center: c, radius: b.width * 0.16);
+      canvas.drawOval(
+          r,
+          _shade(r,
+              light: Color.lerp(rock, Colors.white, 0.4),
+              base: rock,
+              dark: _darken(rock, 0.3)));
+    }
+    final fx = b.width * _faceShift;
+    final eyeC = Offset(b.center.dx + fx, b.center.dy - b.height * 0.1);
+    _eyes(canvas, eyeC, b.width * 0.17, b.width * 0.12, b.height * 0.13,
+        glow:
+            palette.accent == rock ? const Color(0xFFFFE066) : palette.accent);
+    canvas.drawLine(
+      eyeC + Offset(-b.width * 0.1, b.height * 0.22),
+      eyeC + Offset(b.width * 0.1, b.height * 0.22),
+      _stroke(b.width * 0.025, _ink),
+    );
+    _specular(canvas, b);
+  }
+
+  /// Ular: lilitan bertumpuk, kepala di atas, lidah bercabang.
+  void _serpent(Canvas canvas, Rect head, double u, double groundY) {
+    final cx = head.center.dx;
+    // Lilitan dari bawah ke atas.
+    for (var i = 0; i < 3; i++) {
+      final w = u * (0.66 - i * 0.14);
+      final h = u * (0.16 - i * 0.015);
+      final r = Rect.fromCenter(
+        center: Offset(
+          cx + math.sin(phase * math.pi * 2 + i) * u * 0.02,
+          groundY - u * 0.07 - i * u * 0.11,
+        ),
+        width: w,
+        height: h,
+      );
+      canvas.drawOval(r, _shade(r));
+      canvas.drawArc(
+        r.deflate(h * 0.15),
+        0.3,
+        math.pi - 0.6,
+        false,
+        _stroke(h * 0.18, palette.light.withValues(alpha: 0.7)),
+      );
+    }
+    // Leher.
+    canvas.drawLine(
+      Offset(cx, groundY - u * 0.3),
+      head.center,
+      _stroke(u * 0.12, palette.base),
+    );
+    _blob(canvas, head);
+    _face(canvas, head,
+        eyeY: -0.1,
+        eyeSpread: 0.22,
+        eyeW: 0.17,
+        eyeH: 0.3,
+        slit: true,
+        mouth: false);
+    final fx = head.width * _faceShift;
+    final m = Offset(head.center.dx + fx, head.center.dy + head.height * 0.25);
+    final flick = (math.sin(phase * math.pi * 8) * 0.5 + 0.5);
+    if (flick > 0.4) {
+      final tongue = _stroke(head.width * 0.03, const Color(0xFFFF4D6D));
+      final end = m + Offset(0, head.height * 0.3 * flick);
+      canvas.drawLine(m, end, tongue);
+      canvas.drawLine(
+          end, end + Offset(-head.width * 0.06, head.height * 0.08), tongue);
+      canvas.drawLine(
+          end, end + Offset(head.width * 0.06, head.height * 0.08), tongue);
+    }
+    _specular(canvas, head);
+  }
+
+  /// Peri tetes: tubuh tetesan melayang, sayap kupu tembus pandang, kilau.
+  void _sprite(Canvas canvas, Rect b) {
+    final flap = (math.sin(phase * math.pi * 2 * 3) * 0.5 + 0.5);
+    for (final dir in const <double>[-1, 1]) {
+      for (final upper in const <bool>[true, false]) {
+        canvas.save();
+        canvas.translate(
+            b.center.dx + dir * b.width * 0.3, b.center.dy - b.height * 0.05);
+        canvas.rotate(dir * (upper ? -0.5 : 0.4));
+        canvas.scale(0.6 + 0.4 * flap, 1);
+        final wing = Rect.fromLTWH(
+          dir > 0 ? 0 : -b.width * 0.6,
+          -b.height * (upper ? 0.35 : 0.1),
+          b.width * 0.6,
+          b.height * (upper ? 0.45 : 0.35),
+        );
+        canvas.drawOval(
+            wing, Paint()..color = palette.accent.withValues(alpha: 0.45));
+        canvas.drawOval(wing,
+            _stroke(b.width * 0.015, Colors.white.withValues(alpha: 0.7)));
+        canvas.restore();
+      }
+    }
+    final drop = Path()
+      ..moveTo(b.center.dx + turn * b.width * 0.2, b.top - b.height * 0.25)
+      ..cubicTo(b.right + b.width * 0.05, b.top + b.height * 0.4, b.right,
+          b.bottom, b.center.dx, b.bottom)
+      ..cubicTo(
+          b.left,
+          b.bottom,
+          b.left - b.width * 0.05,
+          b.top + b.height * 0.4,
+          b.center.dx + turn * b.width * 0.2,
+          b.top - b.height * 0.25)
+      ..close();
+    canvas.drawPath(drop, _shade(b.inflate(b.width * 0.1)));
+    _face(canvas, b, eyeY: 0.02, eyeSpread: 0.18, eyeW: 0.15, eyeH: 0.28);
+    if (_tier >= 1) {
+      const petals = <Color>[
+        Color(0xFFFF8DB0),
+        Color(0xFFFFD84D),
+        Color(0xFFFF8DB0)
+      ];
+      for (var i = 0; i < 3; i++) {
+        final c = Offset(
+          b.center.dx + (i - 1) * b.width * 0.2 + turn * b.width * 0.15,
+          b.top + b.height * (i == 1 ? 0.05 : 0.15),
+        );
+        for (var k = 0; k < 5; k++) {
+          final a = k * math.pi * 2 / 5;
+          canvas.drawCircle(
+            c + Offset(math.cos(a), math.sin(a)) * b.width * 0.045,
+            b.width * 0.04,
+            Paint()..color = petals[i],
+          );
+        }
+        canvas.drawCircle(c, b.width * 0.035, Paint()..color = Colors.white);
+      }
+    }
+    _arms(canvas, b, size: 0.6);
+    final sparkle = Paint()..color = Colors.white;
+    for (var i = 0; i < 3; i++) {
+      final a = phase * math.pi * 2 + i * 2.1;
+      _star(
+        canvas,
+        b.center +
+            Offset(math.cos(a) * b.width * 0.75, math.sin(a) * b.height * 0.7),
+        b.width * 0.025 * (1 + math.sin(a * 2) * 0.4),
+        sparkle,
+      );
+    }
+    _specular(canvas, b);
+  }
+
+  /// Serangga: tubuh bergaris, antena berbola, enam kaki kecil.
+  void _bug(Canvas canvas, Rect b) {
+    final legs = _stroke(b.width * 0.03, palette.dark);
+    for (final dir in const <double>[-1, 1]) {
+      for (var i = 0; i < 3; i++) {
+        final start = Offset(b.center.dx + dir * b.width * 0.35,
+            b.center.dy + b.height * (0.05 + i * 0.18));
+        final wiggle =
+            math.sin(phase * math.pi * 6 + i + dir) * b.height * 0.04;
+        canvas.drawPath(
+          Path()
+            ..moveTo(start.dx, start.dy)
+            ..lineTo(start.dx + dir * b.width * 0.18,
+                start.dy - b.height * 0.06 + wiggle)
+            ..lineTo(start.dx + dir * b.width * 0.24,
+                start.dy + b.height * 0.12 + wiggle),
+          legs,
+        );
+      }
+    }
+    for (final dir in const <double>[-1, 1]) {
+      final base = Offset(
+          b.center.dx + dir * b.width * 0.12 + turn * b.width * 0.1,
+          b.top + b.height * 0.1);
+      final tip = base +
+          Offset(dir * b.width * 0.22, -b.height * (0.45 + _sway * 0.05));
+      canvas.drawPath(
+        Path()
+          ..moveTo(base.dx, base.dy)
+          ..quadraticBezierTo(base.dx, tip.dy, tip.dx, tip.dy),
+        _stroke(b.width * 0.025, palette.dark),
+      );
+      canvas.drawCircle(tip, b.width * 0.06, Paint()..color = palette.accent);
+    }
+    _blob(canvas, b);
+    final stripe =
+        _stroke(b.width * 0.05, palette.dark.withValues(alpha: 0.45));
+    for (var i = 0; i < 3; i++) {
+      final r = b
+          .deflate(b.width * 0.02)
+          .shift(Offset(0, b.height * (0.15 + i * 0.18)));
+      canvas.save();
+      canvas.clipPath(Path()..addOval(b));
+      canvas.drawArc(r, 0.25, math.pi - 0.5, false, stripe);
+      canvas.restore();
+    }
+    _face(canvas, b, eyeY: -0.14, eyeSpread: 0.2, eyeW: 0.17, eyeH: 0.3);
+    _rim(canvas, b);
+    _specular(canvas, b);
+  }
+
+  // ------------------------------------------------------- element accent
+
+  void _paintElementAccent(
+      Canvas canvas, Rect b, double u, CreatureSpecies kind) {
+    final headFree = !const <CreatureSpecies>{
+      CreatureSpecies.bird,
+      CreatureSpecies.sprite,
+      CreatureSpecies.dragon,
+      CreatureSpecies.bunny,
+      CreatureSpecies.bug,
+      CreatureSpecies.serpent,
+      CreatureSpecies.cat,
+      CreatureSpecies.turtle,
+    }.contains(kind);
+    final top =
+        Offset(b.center.dx + turn * b.width * 0.15, b.top + b.height * 0.06);
+    switch (card.element) {
+      case CardElement.fire:
+        if (headFree) {
+          final flicker = 1 + 0.1 * math.sin(phase * math.pi * 2 * 4 + 1);
+          _flame(canvas, top, b.width * 0.3 * flicker, -0.1);
+        } else {
+          _embers(canvas, b);
+        }
+      case CardElement.water:
+        _bubbles(canvas, b);
+      case CardElement.earth:
+        if (headFree) {
+          _sprout(canvas, top, b);
+        } else {
+          _leaves(canvas, b);
+        }
+      case CardElement.air:
+        _breeze(canvas, b);
+      case CardElement.voidElement:
+        _orbs(canvas, b, u);
+    }
+  }
+
+  void _flame(Canvas canvas, Offset base, double height, double tilt) {
+    canvas.save();
+    canvas.translate(base.dx, base.dy);
+    canvas.rotate(tilt);
+    final w = height * 0.55;
+    final path = Path()
+      ..moveTo(0, 0)
+      ..cubicTo(-w, -height * 0.15, -w * 0.4, -height * 0.7, 0, -height)
+      ..cubicTo(w * 0.15, -height * 0.6, w * 0.9, -height * 0.45, w * 0.5, 0)
+      ..close();
+    canvas.drawPath(path, Paint()..color = const Color(0xFFFF8A2E));
+    canvas.drawPath(
+      path.transform(Matrix4.diagonal3Values(0.55, 0.6, 1).storage),
+      Paint()..color = const Color(0xFFFFE27A),
+    );
+    canvas.restore();
+  }
+
+  void _embers(Canvas canvas, Rect b) {
+    for (var i = 0; i < 3; i++) {
+      final t = (phase + i / 3) % 1;
+      final pos = Offset(
+        b.right + b.width * 0.05 - i * b.width * 0.15,
+        b.bottom - t * b.height * 1.5,
+      );
+      canvas.drawCircle(
+        pos,
+        b.width * 0.03 * (1 - t),
+        Paint()..color = const Color(0xFFFFA23E).withValues(alpha: 1 - t),
+      );
+    }
+  }
+
+  void _bubbles(Canvas canvas, Rect b) {
+    for (var i = 0; i < 3; i++) {
+      final t = (phase + i / 3) % 1;
+      final pos = Offset(
+        b.left - b.width * 0.1 + math.sin(t * math.pi * 4 + i) * b.width * 0.05,
+        b.bottom - t * b.height * 1.6,
+      );
+      canvas.drawCircle(
+        pos,
+        b.width * (0.04 + 0.02 * i),
+        _stroke(
+            b.width * 0.02, palette.light.withValues(alpha: 0.85 * (1 - t))),
+      );
+    }
+  }
+
+  void _sprout(Canvas canvas, Offset top, Rect b) {
+    canvas.save();
+    canvas.translate(top.dx, top.dy);
+    canvas.rotate(_wave * 0.15);
+    final h = b.height * 0.3;
+    canvas.drawLine(Offset.zero, Offset(0, -h),
+        _stroke(b.width * 0.03, const Color(0xFF3F7D20)));
+    for (final dir in const <double>[-1, 1]) {
+      canvas.save();
+      canvas.translate(0, -h);
+      canvas.rotate(dir * 0.9);
+      canvas.drawOval(
+        Rect.fromLTWH(-h * 0.2, -h * 0.75, h * 0.4, h * 0.75),
+        Paint()..color = const Color(0xFF6CC644),
+      );
+      canvas.restore();
+    }
+    canvas.restore();
+  }
+
+  void _leaves(Canvas canvas, Rect b) {
+    for (var i = 0; i < 2; i++) {
+      final t = (phase + i / 2) % 1;
+      final pos = Offset(
+          b.left + b.width * (0.1 + i * 0.9), b.top + t * b.height * 1.2);
+      canvas.save();
+      canvas.translate(pos.dx, pos.dy);
+      canvas.rotate(t * math.pi * 2);
+      canvas.drawOval(
+        Rect.fromCenter(
+            center: Offset.zero, width: b.width * 0.1, height: b.width * 0.05),
+        Paint()..color = const Color(0xFF6CC644).withValues(alpha: 1 - t * 0.6),
+      );
+      canvas.restore();
+    }
+  }
+
+  void _breeze(Canvas canvas, Rect b) {
+    final paint =
+        _stroke(b.width * 0.025, palette.accent.withValues(alpha: 0.7));
+    for (var i = 0; i < 2; i++) {
+      final t = (phase * 2 + i * 0.5) % 1;
+      final y = b.top + b.height * (0.3 + i * 0.5);
+      final x = b.left - b.width * 0.35 + t * b.width * 0.25;
+      canvas.drawPath(
+        Path()
+          ..moveTo(x, y)
+          ..quadraticBezierTo(
+              x + b.width * 0.15, y - b.height * 0.08, x + b.width * 0.25, y)
+          ..quadraticBezierTo(x + b.width * 0.32, y + b.height * 0.05,
+              x + b.width * 0.25, y + b.height * 0.08),
+        paint..color = palette.accent.withValues(alpha: 0.7 * (1 - t)),
+      );
+    }
+  }
+
+  void _orbs(Canvas canvas, Rect b, double u) {
+    for (var i = 0; i < 2; i++) {
+      final angle = phase * math.pi * 2 + i * math.pi;
+      final depth = math.sin(angle);
+      final pos = b.center +
+          Offset(math.cos(angle) * b.width * 0.75,
+              -b.height * 0.2 + depth * b.height * 0.15);
+      final r = u * 0.03 * (1 + depth * 0.3);
+      canvas.drawCircle(
+        pos,
+        r * 2,
+        Paint()
+          ..color = palette.accent.withValues(alpha: 0.35)
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, r),
+      );
+      canvas.drawCircle(pos, r, Paint()..color = palette.light);
+    }
   }
 
   void _paintAura(Canvas canvas, Rect body, double u) {
@@ -249,19 +1769,13 @@ class CreaturePainter extends CustomPainter {
     final pulse = 0.85 + 0.15 * math.sin(phase * math.pi * 4);
     canvas.drawCircle(
       body.center,
-      body.width * 0.95 * pulse,
+      body.width * 0.9 * pulse,
       Paint()
-        ..shader = RadialGradient(
-          colors: <Color>[
-            color.withValues(alpha: 0.42),
-            color.withValues(alpha: 0),
-          ],
-        ).createShader(
-          Rect.fromCircle(center: body.center, radius: body.width * pulse),
-        ),
+        ..color = color.withValues(alpha: 0.28)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, body.width * 0.2),
     );
     if (card.rarity.index >= Rarity.legendary.index) {
-      final sparkle = Paint()..color = Colors.white.withValues(alpha: 0.85);
+      final sparkle = Paint()..color = Colors.white.withValues(alpha: 0.9);
       for (var i = 0; i < 4; i++) {
         final angle = phase * math.pi * 2 + i * math.pi / 2;
         final pos = body.center +
@@ -285,567 +1799,6 @@ class CreaturePainter extends CustomPainter {
         ..color = Colors.black.withValues(alpha: 0.18 - 0.03 * bob)
         ..maskFilter = MaskFilter.blur(BlurStyle.normal, w * 0.05),
     );
-  }
-
-  void _paintBody(Canvas canvas, Rect body) {
-    final highlightCenter = Alignment(-0.35 - turn * 0.6, -0.5);
-    canvas.drawOval(
-      body,
-      Paint()
-        ..shader = RadialGradient(
-          center: highlightCenter,
-          radius: 1.05,
-          colors: <Color>[palette.light, palette.base, palette.dark],
-          stops: const <double>[0, 0.5, 1],
-        ).createShader(body),
-    );
-
-    // Perut: oval terang yang ikut bergeser saat kreatur menoleh.
-    final belly = Rect.fromCenter(
-      center: body.center + Offset(turn * body.width * 0.12, body.height * 0.2),
-      width: body.width * 0.56,
-      height: body.height * 0.5,
-    );
-    canvas.drawOval(
-      belly,
-      Paint()
-        ..shader = RadialGradient(
-          center: const Alignment(0, -0.4),
-          colors: <Color>[
-            palette.light.withValues(alpha: 0.95),
-            palette.light.withValues(alpha: 0.35),
-          ],
-        ).createShader(belly),
-    );
-
-    // Rim light di sisi bawah-kanan memberi kesan volume.
-    canvas.drawArc(
-      body.deflate(body.width * 0.02),
-      -0.1 - turn,
-      math.pi * 0.75,
-      false,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = body.width * 0.035
-        ..strokeCap = StrokeCap.round
-        ..color = palette.accent.withValues(alpha: 0.45),
-    );
-  }
-
-  void _paintFeet(Canvas canvas, Rect body) {
-    final paint = Paint()..color = palette.dark;
-    for (final dir in const <double>[-1, 1]) {
-      final foot = Rect.fromCenter(
-        center: Offset(
-          body.center.dx + dir * body.width * 0.24 + turn * body.width * 0.05,
-          body.bottom - body.height * 0.02,
-        ),
-        width: body.width * 0.26,
-        height: body.height * 0.16,
-      );
-      canvas.drawOval(foot, paint);
-    }
-    // Lengan kecil.
-    final arm = Paint()..color = palette.base;
-    for (final dir in const <double>[-1, 1]) {
-      final swing = math.sin(phase * math.pi * 2 + dir) * 0.15;
-      canvas.save();
-      canvas.translate(
-        body.center.dx + dir * body.width * 0.46,
-        body.center.dy + body.height * 0.12,
-      );
-      canvas.rotate(dir * (0.5 + swing));
-      canvas.drawOval(
-        Rect.fromCenter(
-          center: Offset.zero,
-          width: body.width * 0.14,
-          height: body.height * 0.26,
-        ),
-        arm,
-      );
-      canvas.restore();
-    }
-  }
-
-  void _paintEars(Canvas canvas, Rect body) {
-    final style = (seed >> 3) % 3;
-    if (style == 2) return;
-    final outer = Paint()..color = palette.base;
-    final inner = Paint()..color = palette.light.withValues(alpha: 0.9);
-    for (final dir in const <double>[-1, 1]) {
-      final base = Offset(
-        body.center.dx + dir * body.width * 0.27 + turn * body.width * 0.08,
-        body.top + body.height * 0.14,
-      );
-      final wiggle = math.sin(phase * math.pi * 2 * 2 + dir) * 0.06;
-      canvas.save();
-      canvas.translate(base.dx, base.dy);
-      canvas.rotate(dir * (0.38 + wiggle));
-      if (style == 0) {
-        final h = body.height * 0.48;
-        final w = body.width * 0.2;
-        canvas.drawPath(_earPath(w, h), outer);
-        canvas.drawPath(_earPath(w * 0.55, h * 0.66), inner);
-        // Ujung telinga lebih gelap, khas monster lucu.
-        canvas.drawPath(
-          _earPath(w * 0.4, h * 0.3).shift(Offset(0, -h * 0.7)),
-          Paint()..color = palette.dark,
-        );
-      } else {
-        final r = body.width * 0.15;
-        canvas.drawCircle(Offset(0, -r * 0.7), r, outer);
-        canvas.drawCircle(Offset(0, -r * 0.7), r * 0.58, inner);
-      }
-      canvas.restore();
-    }
-  }
-
-  Path _earPath(double w, double h) {
-    return Path()
-      ..moveTo(-w / 2, 0)
-      ..quadraticBezierTo(-w * 0.35, -h * 0.6, 0, -h)
-      ..quadraticBezierTo(w * 0.35, -h * 0.6, w / 2, 0)
-      ..close();
-  }
-
-  void _paintFace(Canvas canvas, Rect body) {
-    final faceShift = turn * body.width * 0.22;
-    final eyeY = body.center.dy - body.height * 0.08;
-    final bigEyes = (seed >> 5).isEven;
-    final ew = body.width * (bigEyes ? 0.15 : 0.13);
-    final blink = phase > 0.9 && phase < 0.94 ? 0.12 : 1.0;
-    final eh = body.height * (bigEyes ? 0.3 : 0.22) * blink;
-
-    for (final dir in const <double>[-1, 1]) {
-      // Mata sisi jauh mengecil sedikit saat menoleh (foreshortening).
-      final foreshorten = 1 - (dir * turn).clamp(0.0, 1.0) * 0.35;
-      final center = Offset(
-        body.center.dx + dir * body.width * 0.19 + faceShift,
-        eyeY,
-      );
-      final eye = Rect.fromCenter(
-        center: center,
-        width: ew * foreshorten,
-        height: eh,
-      );
-      canvas.drawOval(eye, Paint()..color = _ink);
-      if (blink < 1) continue;
-      final iris = Rect.fromCenter(
-        center: center + Offset(0, eh * 0.2),
-        width: ew * 0.6 * foreshorten,
-        height: eh * 0.4,
-      );
-      canvas.drawOval(
-        iris,
-        Paint()..color = palette.dark.withValues(alpha: 0.9),
-      );
-      canvas.drawCircle(
-        center + Offset(-ew * 0.18, -eh * 0.2),
-        ew * 0.24,
-        Paint()..color = Colors.white,
-      );
-      canvas.drawCircle(
-        center + Offset(ew * 0.16, eh * 0.18),
-        ew * 0.1,
-        Paint()..color = Colors.white.withValues(alpha: 0.85),
-      );
-    }
-
-    final blush = Paint()
-      ..color = const Color(0xFFFF7FA0).withValues(alpha: 0.5);
-    for (final dir in const <double>[-1, 1]) {
-      canvas.drawOval(
-        Rect.fromCenter(
-          center: Offset(
-            body.center.dx + dir * body.width * 0.33 + faceShift,
-            eyeY + body.height * 0.2,
-          ),
-          width: body.width * 0.13,
-          height: body.height * 0.08,
-        ),
-        blush,
-      );
-    }
-
-    final mouthCenter = Offset(
-      body.center.dx + faceShift,
-      eyeY + body.height * 0.2,
-    );
-    final mw = body.width * 0.1;
-    final mouth = Path()
-      ..moveTo(mouthCenter.dx - mw, mouthCenter.dy)
-      ..quadraticBezierTo(
-        mouthCenter.dx - mw / 2,
-        mouthCenter.dy + mw * 0.9,
-        mouthCenter.dx,
-        mouthCenter.dy,
-      )
-      ..quadraticBezierTo(
-        mouthCenter.dx + mw / 2,
-        mouthCenter.dy + mw * 0.9,
-        mouthCenter.dx + mw,
-        mouthCenter.dy,
-      );
-    canvas.drawPath(
-      mouth,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = math.max(1, body.width * 0.025)
-        ..strokeCap = StrokeCap.round
-        ..color = _ink,
-    );
-  }
-
-  void _paintSpecular(Canvas canvas, Rect body) {
-    final spot = Rect.fromCenter(
-      center: body.center +
-          Offset(
-            -body.width * (0.22 + turn * 0.3),
-            -body.height * 0.3,
-          ),
-      width: body.width * 0.24,
-      height: body.height * 0.14,
-    );
-    canvas.save();
-    canvas.translate(spot.center.dx, spot.center.dy);
-    canvas.rotate(-0.5);
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset.zero,
-        width: spot.width,
-        height: spot.height,
-      ),
-      Paint()
-        ..shader = RadialGradient(
-          colors: <Color>[
-            Colors.white.withValues(alpha: 0.75),
-            Colors.white.withValues(alpha: 0),
-          ],
-        ).createShader(
-          Rect.fromCenter(
-            center: Offset.zero,
-            width: spot.width,
-            height: spot.height,
-          ),
-        ),
-    );
-    canvas.restore();
-  }
-
-  // ------------------------------------------------------- element features
-
-  void _paintBackFeatures(Canvas canvas, Rect body, double u) {
-    switch (card.element) {
-      case CardElement.fire:
-        final flicker = 1 + 0.12 * math.sin(phase * math.pi * 2 * 3);
-        _flame(
-          canvas,
-          Offset(
-            body.right - body.width * 0.05 - turn * body.width * 0.2,
-            body.center.dy + body.height * 0.2,
-          ),
-          body.width * 0.42 * flicker,
-          0.7,
-        );
-      case CardElement.water:
-        _fishTail(canvas, body);
-      case CardElement.earth:
-        _rockPlates(canvas, body);
-      case CardElement.air:
-        _wings(canvas, body);
-      case CardElement.voidElement:
-        _orbs(canvas, body, u, back: true);
-    }
-  }
-
-  void _paintFrontFeatures(Canvas canvas, Rect body, double u) {
-    final top = Offset(
-      body.center.dx + turn * body.width * 0.15,
-      body.top + body.height * 0.06,
-    );
-    switch (card.element) {
-      case CardElement.fire:
-        final flicker = 1 + 0.1 * math.sin(phase * math.pi * 2 * 4 + 1);
-        _flame(canvas, top, body.width * 0.3 * flicker, -0.1);
-      case CardElement.water:
-        _headFin(canvas, top, body);
-        _bubbles(canvas, body);
-      case CardElement.earth:
-        _sprout(canvas, top, body);
-      case CardElement.air:
-        _swirl(canvas, top, body);
-      case CardElement.voidElement:
-        _horns(canvas, body);
-        _orbs(canvas, body, u, back: false);
-    }
-  }
-
-  void _flame(Canvas canvas, Offset base, double height, double tilt) {
-    canvas.save();
-    canvas.translate(base.dx, base.dy);
-    canvas.rotate(tilt);
-    final w = height * 0.55;
-    final path = Path()
-      ..moveTo(0, 0)
-      ..cubicTo(-w, -height * 0.15, -w * 0.4, -height * 0.7, 0, -height)
-      ..cubicTo(w * 0.15, -height * 0.6, w * 0.9, -height * 0.45, w * 0.5, 0)
-      ..close();
-    final bounds = Rect.fromLTWH(-w, -height, w * 2, height);
-    canvas.drawPath(
-      path,
-      Paint()
-        ..shader = const LinearGradient(
-          begin: Alignment.bottomCenter,
-          end: Alignment.topCenter,
-          colors: <Color>[
-            Color(0xFFE2361B),
-            Color(0xFFFF9A2E),
-            Color(0xFFFFF27A)
-          ],
-        ).createShader(bounds),
-    );
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = const Color(0x55FFB347)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 6),
-    );
-    canvas.restore();
-  }
-
-  void _fishTail(Canvas canvas, Rect body) {
-    final sway = math.sin(phase * math.pi * 2 * 2) * 0.25;
-    canvas.save();
-    canvas.translate(
-      body.right - body.width * 0.08 - turn * body.width * 0.2,
-      body.center.dy + body.height * 0.3,
-    );
-    canvas.rotate(-0.6 + sway);
-    final w = body.width * 0.36;
-    final path = Path()
-      ..moveTo(0, 0)
-      ..quadraticBezierTo(w * 0.5, -w * 0.1, w, -w * 0.5)
-      ..quadraticBezierTo(w * 0.7, 0, w, w * 0.5)
-      ..quadraticBezierTo(w * 0.5, w * 0.1, 0, 0);
-    canvas.drawPath(
-      path,
-      Paint()
-        ..shader = LinearGradient(
-          colors: <Color>[palette.base, palette.accent],
-        ).createShader(Rect.fromLTWH(0, -w / 2, w, w)),
-    );
-    canvas.restore();
-  }
-
-  void _headFin(Canvas canvas, Offset top, Rect body) {
-    final h = body.height * 0.45;
-    final path = Path()
-      ..moveTo(top.dx - body.width * 0.12, top.dy + h * 0.2)
-      ..quadraticBezierTo(top.dx - body.width * 0.05, top.dy - h,
-          top.dx + body.width * 0.2, top.dy - h * 0.7)
-      ..quadraticBezierTo(top.dx + body.width * 0.05, top.dy - h * 0.2,
-          top.dx + body.width * 0.12, top.dy + h * 0.2)
-      ..close();
-    canvas.drawPath(
-      path,
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.bottomCenter,
-          end: Alignment.topCenter,
-          colors: <Color>[palette.base, palette.accent],
-        ).createShader(Rect.fromLTWH(
-            top.dx - body.width * 0.2, top.dy - h, body.width * 0.4, h * 1.2)),
-    );
-  }
-
-  void _bubbles(Canvas canvas, Rect body) {
-    final stroke = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = math.max(1, body.width * 0.02)
-      ..color = palette.light.withValues(alpha: 0.8);
-    for (var i = 0; i < 3; i++) {
-      final t = (phase + i / 3) % 1;
-      final pos = Offset(
-        body.left -
-            body.width * 0.1 +
-            math.sin(t * math.pi * 4 + i) * body.width * 0.05,
-        body.bottom - t * body.height * 1.6,
-      );
-      final r = body.width * (0.04 + 0.02 * i);
-      stroke.color = palette.light.withValues(alpha: 0.8 * (1 - t));
-      canvas.drawCircle(pos, r, stroke);
-    }
-  }
-
-  void _rockPlates(Canvas canvas, Rect body) {
-    final rock = Paint()..color = palette.accent;
-    final rockLight = Paint()
-      ..color = Color.lerp(palette.accent, Colors.white, 0.35)!;
-    for (var i = 0; i < 3; i++) {
-      final angle = -math.pi / 2 + (i - 1) * 0.55 - turn * 0.3;
-      final base = body.center +
-          Offset(math.cos(angle) * body.width * 0.45,
-              math.sin(angle) * body.height * 0.48);
-      final h = body.height * (i == 1 ? 0.42 : 0.32);
-      canvas.save();
-      canvas.translate(base.dx, base.dy);
-      canvas.rotate(angle + math.pi / 2);
-      final w = body.width * 0.16;
-      final plate = Path()
-        ..moveTo(-w, 0)
-        ..lineTo(-w * 0.35, -h)
-        ..lineTo(w * 0.5, -h * 0.82)
-        ..lineTo(w, 0)
-        ..close();
-      canvas.drawPath(plate, rock);
-      final facet = Path()
-        ..moveTo(-w, 0)
-        ..lineTo(-w * 0.35, -h)
-        ..lineTo(0, 0)
-        ..close();
-      canvas.drawPath(facet, rockLight);
-      canvas.restore();
-    }
-  }
-
-  void _sprout(Canvas canvas, Offset top, Rect body) {
-    final sway = math.sin(phase * math.pi * 2) * 0.15;
-    canvas.save();
-    canvas.translate(top.dx, top.dy);
-    canvas.rotate(sway);
-    final stem = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = math.max(1, body.width * 0.03)
-      ..strokeCap = StrokeCap.round
-      ..color = const Color(0xFF3F7D20);
-    final h = body.height * 0.3;
-    canvas.drawLine(Offset.zero, Offset(0, -h), stem);
-    final leaf = Paint()
-      ..shader = const LinearGradient(
-        colors: <Color>[Color(0xFF5FBF3A), Color(0xFFB6F07A)],
-      ).createShader(Rect.fromLTWH(-h, -h * 1.5, h * 2, h));
-    for (final dir in const <double>[-1, 1]) {
-      canvas.save();
-      canvas.translate(0, -h);
-      canvas.rotate(dir * 0.9);
-      canvas.drawOval(
-        Rect.fromLTWH(-h * 0.2, -h * 0.75, h * 0.4, h * 0.75),
-        leaf,
-      );
-      canvas.restore();
-    }
-    canvas.restore();
-  }
-
-  void _wings(Canvas canvas, Rect body) {
-    final flap = math.sin(phase * math.pi * 2 * 2) * 0.3;
-    for (final dir in const <double>[-1, 1]) {
-      canvas.save();
-      canvas.translate(
-        body.center.dx + dir * body.width * 0.38 - turn * body.width * 0.1,
-        body.center.dy - body.height * 0.1,
-      );
-      canvas.rotate(dir * (0.9 + flap));
-      for (var f = 0; f < 3; f++) {
-        final len = body.width * (0.55 - f * 0.1);
-        final feather = Rect.fromLTWH(
-          dir > 0 ? 0 : -len,
-          -body.height * 0.09 + f * body.height * 0.08,
-          len,
-          body.height * 0.17,
-        );
-        canvas.drawOval(
-          feather,
-          Paint()
-            ..shader = LinearGradient(
-              begin: dir > 0 ? Alignment.centerLeft : Alignment.centerRight,
-              end: dir > 0 ? Alignment.centerRight : Alignment.centerLeft,
-              colors: <Color>[
-                palette.light,
-                palette.accent.withValues(alpha: 0.85)
-              ],
-            ).createShader(feather),
-        );
-      }
-      canvas.restore();
-    }
-  }
-
-  void _swirl(Canvas canvas, Offset top, Rect body) {
-    final r = body.width * 0.14;
-    final path = Path();
-    for (var i = 0; i <= 24; i++) {
-      final t = i / 24;
-      final angle = t * math.pi * 3 + phase * math.pi * 2;
-      final rr = r * (1 - t * 0.7);
-      final p = Offset(
-          top.dx + math.cos(angle) * rr, top.dy - r + math.sin(angle) * rr);
-      if (i == 0) {
-        path.moveTo(p.dx, p.dy);
-      } else {
-        path.lineTo(p.dx, p.dy);
-      }
-    }
-    canvas.drawPath(
-      path,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = math.max(1, body.width * 0.035)
-        ..strokeCap = StrokeCap.round
-        ..color = palette.accent,
-    );
-  }
-
-  void _horns(Canvas canvas, Rect body) {
-    for (final dir in const <double>[-1, 1]) {
-      final base = Offset(
-        body.center.dx + dir * body.width * 0.22 + turn * body.width * 0.1,
-        body.top + body.height * 0.12,
-      );
-      final h = body.height * 0.42;
-      final w = body.width * 0.12;
-      final path = Path()
-        ..moveTo(base.dx - w, base.dy)
-        ..quadraticBezierTo(base.dx - w + dir * w * 0.5, base.dy - h * 0.7,
-            base.dx + dir * w * 1.6, base.dy - h)
-        ..quadraticBezierTo(
-            base.dx + dir * w * 0.2, base.dy - h * 0.4, base.dx + w, base.dy)
-        ..close();
-      canvas.drawPath(
-        path,
-        Paint()
-          ..shader = LinearGradient(
-            begin: Alignment.bottomCenter,
-            end: Alignment.topCenter,
-            colors: <Color>[palette.dark, palette.accent],
-          ).createShader(Rect.fromLTWH(base.dx - w * 2, base.dy - h, w * 4, h)),
-      );
-    }
-  }
-
-  void _orbs(Canvas canvas, Rect body, double u, {required bool back}) {
-    for (var i = 0; i < 2; i++) {
-      final angle = phase * math.pi * 2 + i * math.pi;
-      final depth = math.sin(angle);
-      // Orb di belakang tubuh saat depth < 0, di depan saat depth >= 0.
-      if (back != (depth < 0)) continue;
-      final pos = body.center +
-          Offset(math.cos(angle) * body.width * 0.75,
-              -body.height * 0.2 + depth * body.height * 0.15);
-      final r = u * 0.035 * (1 + depth * 0.3);
-      canvas.drawCircle(
-        pos,
-        r * 2.4,
-        Paint()
-          ..shader = RadialGradient(
-            colors: <Color>[
-              palette.accent.withValues(alpha: 0.6),
-              palette.accent.withValues(alpha: 0),
-            ],
-          ).createShader(Rect.fromCircle(center: pos, radius: r * 2.4)),
-      );
-      canvas.drawCircle(pos, r, Paint()..color = palette.light);
-    }
   }
 
   // ----------------------------------------------------------------- spells

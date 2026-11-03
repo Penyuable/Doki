@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:dokimon/core/ui/widgets.dart';
 import 'package:dokimon/domain/models/card_model.dart';
 import 'package:flutter/material.dart';
@@ -17,6 +20,59 @@ void main() {
   test('creatureSeed stabil dan berbeda antar id', () {
     expect(creatureSeed('card_001'), creatureSeed('card_001'));
     expect(creatureSeed('card_001'), isNot(creatureSeed('card_002')));
+  });
+
+  test('spesies dari nama kartu: dino, burung, babi, dll', () {
+    CreatureSpecies of(String name) =>
+        speciesOf(testUnit('card_x', name: name));
+    expect(of('Glacier Titan'), CreatureSpecies.dino);
+    expect(of('Ignis Drake'), CreatureSpecies.dragon);
+    expect(of('Pyre Phoenix'), CreatureSpecies.bird);
+    expect(of('Cinderling'), CreatureSpecies.pig);
+    expect(of('Ember Pup'), CreatureSpecies.dog);
+    expect(of('Mudback Turtle'), CreatureSpecies.turtle);
+    expect(of('Tidal Warden'), CreatureSpecies.turtle);
+    expect(of('Obsidian Warden'), CreatureSpecies.golem);
+  });
+
+  test('katalog bawaan memakai banyak spesies berbeda', () {
+    final raw = File('assets/cards/cards.seed.json').readAsStringSync();
+    final units = (jsonDecode(raw) as List<dynamic>)
+        .cast<Map<String, dynamic>>()
+        .where((c) => c['type'] == 'unit')
+        .map((c) => testUnit(c['id'] as String, name: c['name'] as String));
+    final kinds = units.map(speciesOf).toSet();
+    expect(kinds.length, greaterThanOrEqualTo(10));
+  });
+
+  testWidgets('semua spesies & tingkat rarity tergambar tanpa error', (
+    tester,
+  ) async {
+    const names = <String>[
+      'Rex',
+      'Drake',
+      'Bird',
+      'Pig',
+      'Pup',
+      'Bear',
+      'Hare',
+      'Cat',
+      'Turtle',
+      'Golem',
+      'Serpent',
+      'Sprite',
+      'Mite',
+    ];
+    for (final name in names) {
+      for (final rarity in Rarity.values) {
+        final card = testUnit('card_$name', name: name, rarity: rarity);
+        await tester.pumpWidget(
+          _host(SizedBox(height: 160, child: CreatureScene(card: card))),
+        );
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(tester.takeException(), isNull, reason: '$name $rarity');
+      }
+    }
   });
 
   testWidgets('CardTile merender semua elemen & rarity tanpa error', (

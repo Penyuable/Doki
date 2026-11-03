@@ -24,9 +24,9 @@ class _SplashPageState extends State<SplashPage>
 
   // Kreatur maskot (id starter) — hanya visual, bukan data inventory.
   static final List<CardModel> _mascots = <CardModel>[
-    mascotCard('card_002', CardElement.water),
-    mascotCard('card_001', CardElement.fire),
-    mascotCard('card_003', CardElement.earth),
+    mascotCard('card_002', CardElement.water, name: 'Splash Bird'),
+    mascotCard('card_001', CardElement.fire, name: 'Ember Rex'),
+    mascotCard('card_003', CardElement.earth, name: 'Mossy Pig'),
   ];
 
   @override
