@@ -8,6 +8,37 @@ Flutter (Dart) · Express.js + Prisma · **GitHub sebagai headless CMS** untuk k
 
 ---
 
+## What's New — v1.0.0
+
+**Rilis pertama** (`1.0.0+1`) — game lengkap dari onboarding sampai pertarungan vs bot,
+bisa dimainkan **offline tanpa server** atau **online dengan akun**.
+
+### Fitur utama
+
+| Area | Yang tersedia di v1 |
+|---|---|
+| **Onboarding** | Splash animasi (kartu → monster → meja arena), tips loading, dan panduan **Cara Bermain** 5 langkah |
+| **Akun** | Register, login, refresh token, logout; **mode offline** default tanpa login (data di perangkat) |
+| **Katalog** | 25 kartu (5 elemen, unit & spell), fallback 3 lapis: memory → cache Hive → aset bundled |
+| **Gacha** | Pull 1x/10x dengan Gold atau Gem, rate transparan, **pity Epic+ di pull ke-50**, jaminan 10x minimal Rare+, animasi reveal + riwayat pull |
+| **Koleksi** | Filter elemen/rarity/tipe/kepemilikan, pencarian, detail kartu, dan **viewer kartu 3D** |
+| **Deck** | Builder tepat 20 kartu, maks 3 copy per kartu, validasi server, maks 10 deck, kurva biaya |
+| **Battle** | 3 tingkat bot (**Mudah / Sedang / Master**), engine Dart deterministik, jurus per elemen, status (burn/freeze/shield/rally), Guard + counter, log pertarungan |
+| **Progresi** | HP 200, energi 1→10, reward Gold & XP, first-win bonus, level up, statistik win rate |
+| **Hadiah harian** | Klaim harian + streak, batas reward harian |
+| **Tampilan** | Ilustrasi kreatur kartun, 4 tema meja arena (Kayu, Hutan, Laut, Kosmik), efek partikel & getaran |
+| **Pengaturan** | Bahasa **Indonesia/English**, kurangi animasi, hemat baterai, getaran, tema meja |
+| **Build & CI** | APK release, workflow iOS unsigned (GitHub Actions + Codemagic) untuk IPA tanpa Mac |
+
+### Catatan rilis
+
+- **Audio belum tersedia** di v1 (menu Audio menampilkan status "Belum tersedia").
+- Rilis iOS memakai build *unsigned*; distribusi TestFlight/App Store butuh Apple Developer Program.
+- Placeholder `dokimon/dokimon` pada URL aset **wajib diganti** sebelum publikasi (lihat bagian Konten kartu).
+- APK release masih ditandatangani debug keystore — cukup untuk sideload/internal.
+
+---
+
 ## Dokumen
 
 | Dokumen | Isi | Untuk siapa |
