@@ -142,6 +142,14 @@ Pemetaan kartu → ilustrasi ada di `frontend/lib/core/ui/creature_models.dart`.
 
 iOS **tidak bisa** di-build dari Windows — butuh macOS + Xcode. Dua jalur:
 
+1. **Codemagic (tanpa Mac, direkomendasikan):** konfigurasi ada di `codemagic.yaml`
+   (root repo), berisi workflow `ios-unsigned` (IPA) dan `android-release` (APK & AAB).
+   Penyiapan sekali saja:
+   - Masuk ke https://codemagic.io dengan akun GitHub.
+   - *Add application* → pilih repo `Penyuable/Dokimon` → tipe **Flutter App (via codemagic.yaml)**.
+   - *Start new build* → pilih branch dan workflow `ios-unsigned`.
+   - Setelah selesai, unduh `dokimon-unsigned.ipa` dari halaman build (*Artifacts*).
+   Build berikutnya berjalan otomatis setiap push ke `main` atau `feat/*`.
 1. **GitHub Actions (tanpa Mac):** workflow `.github/workflows/ios-build.yml` berjalan
    otomatis saat push ke `main` (atau manual lewat tab *Actions → iOS build → Run workflow*).
    Hasilnya artifact `dokimon-ios-unsigned` berisi `dokimon-unsigned.ipa`.

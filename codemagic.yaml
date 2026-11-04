@@ -1,0 +1,66 @@
+# Codemagic CI — build iOS & Android tanpa Mac lokal.
+# Aplikasi Flutter ada di subfolder `frontend/`; path artifact relatif ke
+# folder clone, jadi ditulis lengkap dengan `frontend/`.
+workflows:
+  ios-unsigned:
+    name: iOS (IPA tanpa tanda tangan)
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    working_directory: frontend
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: 'main'
+          include: true
+        - pattern: 'feat/*'
+          include: true
+    scripts:
+      - name: Dependencies
+        script: |
+          flutter pub get
+      - name: Analyze & test
+        script: |
+          flutter analyze
+          flutter test --concurrency=1
+      - name: Build iOS (tanpa codesign)
+        script: |
+          flutter build ios --release --no-codesign
+      - name: Kemas IPA
+        script: |
+          mkdir -p Payload
+          cp -R build/ios/iphoneos/Runner.app Payload/
+          zip -qry dokimon-unsigned.ipa Payload
+    artifacts:
+      - frontend/dokimon-unsigned.ipa
+
+  android-release:
+    name: Android (APK & AAB)
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    working_directory: frontend
+    environment:
+      flutter: stable
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: 'main'
+          include: true
+        - pattern: 'feat/*'
+          include: true
+    scripts:
+      - name: Dependencies
+        script: |
+          flutter pub get
+      - name: Build APK & AAB
+        script: |
+          flutter build apk --release
+          flutter build appbundle --release
+    artifacts:
+      - frontend/build/**/outputs/**/*.apk
+      - frontend/build/**/outputs/**/*.aab
