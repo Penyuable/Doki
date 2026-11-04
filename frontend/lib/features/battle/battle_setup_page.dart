@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../app_scope.dart';
 import '../../core/config/game_config.dart';
@@ -7,6 +8,7 @@ import '../../core/network/api_exception.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/ui/widgets.dart';
 import '../../domain/models/user_model.dart';
+import '../settings/settings_cubit.dart';
 import 'battle_arena_page.dart';
 
 /// Layar pemilihan kesulitan sebelum pertandingan dimulai.
@@ -209,6 +211,9 @@ class _BattleSetupPageState extends State<BattleSetupPage> {
                       const SizedBox(height: 10),
                     ],
                     const SizedBox(height: 8),
+                    SectionHeader(title: strings.t('table.title')),
+                    const _TablePicker(),
+                    const SizedBox(height: 18),
                     if (profile != null) _StatsRow(profile: profile),
                     const SizedBox(height: 18),
                     FilledButton.icon(
@@ -391,6 +396,38 @@ class _StatsRow extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Pilihan tema meja arena (disimpan di pengaturan).
+class _TablePicker extends StatelessWidget {
+  const _TablePicker();
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    final current = context.select<SettingsCubit, TableTheme>(
+      (cubit) => cubit.state.tableTheme,
+    );
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: <Widget>[
+          for (final theme in TableTheme.values)
+            Padding(
+              padding: const EdgeInsets.only(right: 14),
+              child: TableSwatch(
+                theme: theme,
+                label: strings.t(theme.i18nKey),
+                selected: theme == current,
+                onTap: () =>
+                    context.read<SettingsCubit>().setTableTheme(theme),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

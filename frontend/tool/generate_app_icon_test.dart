@@ -7,6 +7,7 @@
 // kreatur api), jadi ikon & logo selalu konsisten.
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:dokimon/core/theme/app_theme.dart';
@@ -68,8 +69,9 @@ Future<void> _render(
   WidgetTester tester,
   _IconStyle style,
   int pixels,
-  String path,
-) async {
+  String path, {
+  bool opaquePng = false,
+}) async {
   final key = GlobalKey();
   // Gambar pada 256 logis lalu skala ke ukuran target agar detail konsisten.
   const logical = 256.0;
@@ -95,10 +97,18 @@ Future<void> _render(
     final boundary =
         key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
     final image = await boundary.toImage(pixelRatio: pixels / logical);
-    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+    final List<int> png;
+    if (opaquePng) {
+      final rgba = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+      png =
+          _encodeRgbPng(rgba!.buffer.asUint8List(), image.width, image.height);
+    } else {
+      final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+      png = bytes!.buffer.asUint8List();
+    }
     File(path)
       ..createSync(recursive: true)
-      ..writeAsBytesSync(bytes!.buffer.asUint8List());
+      ..writeAsBytesSync(png);
   });
 }
 
@@ -142,12 +152,77 @@ void main() {
       if (file == null || !done.add(file)) continue;
       final points = double.parse((map['size'] as String).split('x').first);
       final scale = double.parse((map['scale'] as String).replaceAll('x', ''));
+      // App Store menolak ikon dengan kanal alpha: tulis PNG RGB.
       await _render(
         tester,
         _IconStyle.opaque,
         (points * scale).round(),
         '$iosDir/$file',
+        opaquePng: true,
+      );
+    }
+
+    // Logo layar launch iOS (168pt, transparan di atas latar storyboard).
+    const launchDir = 'ios/Runner/Assets.xcassets/LaunchImage.imageset';
+    for (final (scale, suffix) in <(int, String)>[
+      (1, ''),
+      (2, '@2x'),
+      (3, '@3x')
+    ]) {
+      await _render(
+        tester,
+        _IconStyle.legacy,
+        168 * scale,
+        '$launchDir/LaunchImage$suffix.png',
       );
     }
   });
+}
+
+/// PNG truecolor (RGB, tanpa alpha) dari piksel RGBA.
+List<int> _encodeRgbPng(Uint8List rgba, int width, int height) {
+  final raw = BytesBuilder();
+  for (var y = 0; y < height; y++) {
+    raw.addByte(0); // filter: none
+    for (var x = 0; x < width; x++) {
+      final i = (y * width + x) * 4;
+      raw
+        ..addByte(rgba[i])
+        ..addByte(rgba[i + 1])
+        ..addByte(rgba[i + 2]);
+    }
+  }
+  final out = BytesBuilder()
+    ..add(const <int>[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+  void chunk(String type, List<int> data) {
+    final typeBytes = ascii.encode(type);
+    out
+      ..add(_u32(data.length))
+      ..add(typeBytes)
+      ..add(data)
+      ..add(_u32(_crc32(<int>[...typeBytes, ...data])));
+  }
+
+  chunk('IHDR', <int>[..._u32(width), ..._u32(height), 8, 2, 0, 0, 0]);
+  chunk('IDAT', zlib.encode(raw.takeBytes()));
+  chunk('IEND', const <int>[]);
+  return out.takeBytes();
+}
+
+List<int> _u32(int v) => <int>[
+      (v >> 24) & 0xFF,
+      (v >> 16) & 0xFF,
+      (v >> 8) & 0xFF,
+      v & 0xFF,
+    ];
+
+int _crc32(List<int> bytes) {
+  var crc = 0xFFFFFFFF;
+  for (final b in bytes) {
+    crc ^= b;
+    for (var k = 0; k < 8; k++) {
+      crc = (crc & 1) != 0 ? (crc >> 1) ^ 0xEDB88320 : crc >> 1;
+    }
+  }
+  return crc ^ 0xFFFFFFFF;
 }

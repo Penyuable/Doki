@@ -246,6 +246,7 @@ Format tiap fitur: **Deskripsi → Aturan bisnis → Acceptance Criteria (AC)**.
 - Sort: rarity ↓, nama A–Z, terbaru, ATK ↓, HP ↓.
 - Kartu yang belum dimiliki tampil *silhouette* + nama rarity (untuk tease), tidak bisa dipakai di deck.
 - Detail kartu: artwork, stat, ability, keyword tooltip, tombol "Putar 3D".
+  - *Update 2026-11-04 (Q-06):* tombol "Putar 3D" disembunyikan atas permintaan PO; karakter ditampilkan sebagai ilustrasi kartun 2D.
 - Mode 3D: `model_viewer_plus` dengan auto-rotate, pinch-zoom; ada tombol kembali & fallback gambar bila model gagal/`model3dUrl` null.
 - Preload model hanya untuk kartu yang dibuka (bukan semua), maks 3 model di cache LRU.
 

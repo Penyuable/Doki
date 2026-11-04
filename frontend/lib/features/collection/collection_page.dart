@@ -139,9 +139,12 @@ class _CollectionBody extends StatelessWidget {
                           ),
                         )
                         .toList(growable: false),
-                    child: Chip(
-                      avatar: const Icon(Icons.sort_rounded, size: 16),
-                      label: Text(strings.t(filter.sort.i18nKey)),
+                    child: ClayPill(
+                      label: strings.t(filter.sort.i18nKey),
+                      icon: Icons.sort_rounded,
+                      color: AppTheme.surface,
+                      foreground: AppTheme.ink,
+                      fontSize: 12,
                     ),
                   ),
                 ],
@@ -189,58 +192,14 @@ class _CollectionBody extends StatelessWidget {
                     ),
                 ],
               ),
-              const SizedBox(height: 6),
-              _ChipRow(
+              const SizedBox(height: 8),
+              Row(
                 children: <Widget>[
-                  _Choice(
-                    label: strings.t('common.all'),
-                    selected: filter.rarity == null,
-                    onTap: () => cubit.setRarity(null),
+                  _MoreFiltersButton(
+                    active: _extraFilterCount(filter),
+                    onTap: () => _openMoreFilters(context),
                   ),
-                  for (final rarity in Rarity.values)
-                    _Choice(
-                      label: strings.t(rarity.i18nKey),
-                      selected: filter.rarity == rarity,
-                      color: AppTheme.rarityColor(rarity),
-                      onTap: () => cubit.setRarity(rarity),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              _ChipRow(
-                children: <Widget>[
-                  _Choice(
-                    label: strings.t('common.all'),
-                    selected: filter.type == null && filter.ownedOnly == null,
-                    onTap: () {
-                      cubit.setType(null);
-                      cubit.setOwnedOnly(null);
-                    },
-                  ),
-                  _Choice(
-                    label: strings.t('type.unit'),
-                    selected: filter.type == CardType.unit,
-                    onTap: () => cubit.setType(CardType.unit),
-                  ),
-                  _Choice(
-                    label: strings.t('type.spell'),
-                    selected: filter.type == CardType.spell,
-                    onTap: () => cubit.setType(CardType.spell),
-                  ),
-                  _Choice(
-                    label: strings.t('collection.ownedFilter'),
-                    selected: filter.ownedOnly == true,
-                    onTap: () => cubit.setOwnedOnly(
-                      filter.ownedOnly == true ? null : true,
-                    ),
-                  ),
-                  _Choice(
-                    label: strings.t('collection.notOwnedFilter'),
-                    selected: filter.ownedOnly == false,
-                    onTap: () => cubit.setOwnedOnly(
-                      filter.ownedOnly == false ? null : false,
-                    ),
-                  ),
+                  const Spacer(),
                   if (!filter.isDefault)
                     TextButton.icon(
                       onPressed: () {
@@ -298,6 +257,141 @@ class _CollectionBody extends StatelessWidget {
   }
 }
 
+int _extraFilterCount(CollectionFilter filter) =>
+    (filter.rarity == null ? 0 : 1) +
+    (filter.type == null ? 0 : 1) +
+    (filter.ownedOnly == null ? 0 : 1);
+
+/// Lembar filter rarity & tipe/kepemilikan (di luar baris elemen).
+void _openMoreFilters(BuildContext context) {
+  final cubit = context.read<CollectionCubit>();
+  showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    builder: (sheetContext) => BlocProvider<CollectionCubit>.value(
+      value: cubit,
+      child: BlocBuilder<CollectionCubit, CollectionState>(
+        builder: (context, state) {
+          if (state is! CollectionReady) return const SizedBox.shrink();
+          final filter = state.filter;
+          final strings = AppStrings.of(context);
+          Widget section(String title, List<Widget> chips) => Padding(
+            padding: const EdgeInsets.only(bottom: 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                SectionHeader(title: title),
+                Wrap(spacing: 8, runSpacing: 10, children: chips),
+              ],
+            ),
+          );
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  section(strings.t('collection.filterRarity'), <Widget>[
+                    _Choice(
+                      label: strings.t('common.all'),
+                      selected: filter.rarity == null,
+                      onTap: () => cubit.setRarity(null),
+                    ),
+                    for (final rarity in Rarity.values)
+                      _Choice(
+                        label: strings.t(rarity.i18nKey),
+                        selected: filter.rarity == rarity,
+                        color: AppTheme.rarityColor(rarity),
+                        onTap: () => cubit.setRarity(rarity),
+                      ),
+                  ]),
+                  section(strings.t('collection.filterType'), <Widget>[
+                    _Choice(
+                      label: strings.t('common.all'),
+                      selected: filter.type == null,
+                      onTap: () => cubit.setType(null),
+                    ),
+                    _Choice(
+                      label: strings.t('type.unit'),
+                      selected: filter.type == CardType.unit,
+                      onTap: () => cubit.setType(CardType.unit),
+                    ),
+                    _Choice(
+                      label: strings.t('type.spell'),
+                      selected: filter.type == CardType.spell,
+                      onTap: () => cubit.setType(CardType.spell),
+                    ),
+                  ]),
+                  section(strings.t('collection.filterOwned'), <Widget>[
+                    _Choice(
+                      label: strings.t('common.all'),
+                      selected: filter.ownedOnly == null,
+                      onTap: () => cubit.setOwnedOnly(null),
+                    ),
+                    _Choice(
+                      label: strings.t('collection.ownedFilter'),
+                      selected: filter.ownedOnly == true,
+                      onTap: () => cubit.setOwnedOnly(true),
+                    ),
+                    _Choice(
+                      label: strings.t('collection.notOwnedFilter'),
+                      selected: filter.ownedOnly == false,
+                      onTap: () => cubit.setOwnedOnly(false),
+                    ),
+                  ]),
+                  ClayButton(
+                    label: strings.t('common.done'),
+                    expand: true,
+                    onPressed: () => Navigator.of(sheetContext).pop(),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    ),
+  );
+}
+
+class _MoreFiltersButton extends StatelessWidget {
+  const _MoreFiltersButton({required this.active, required this.onTap});
+
+  final int active;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    return Clay(
+      radius: 999,
+      depth: 0.5,
+      onTap: onTap,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          const Icon(Icons.tune_rounded, size: 18, color: AppTheme.primary),
+          const SizedBox(width: 6),
+          Text(
+            strings.t('collection.moreFilters'),
+            style: const TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 12.5,
+              color: AppTheme.ink,
+            ),
+          ),
+          if (active > 0) ...<Widget>[
+            const SizedBox(width: 6),
+            ClayPill(label: '$active', color: AppTheme.primary, fontSize: 10),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _ChipRow extends StatelessWidget {
   const _ChipRow({required this.children});
 
@@ -333,25 +427,25 @@ class _Choice extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final accent = color ?? AppTheme.primary;
-    return ChoiceChip(
-      label: Text(label),
+    return Semantics(
+      button: true,
       selected: selected,
-      showCheckmark: false,
-      onSelected: (_) => onTap(),
-      labelStyle: TextStyle(
-        fontSize: 11.5,
-        fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
-        color: selected ? accent : AppTheme.inkSoft,
+      label: label,
+      child: Clay(
+        radius: 999,
+        color: selected ? accent : AppTheme.surface,
+        depth: selected ? 0.45 : 0.3,
+        onTap: onTap,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+            color: selected ? Colors.white : AppTheme.inkSoft,
+          ),
+        ),
       ),
-      selectedColor: accent.withValues(alpha: 0.18),
-      backgroundColor: AppTheme.surface,
-      side: BorderSide(
-        color: selected
-            ? accent.withValues(alpha: 0.6)
-            : AppTheme.ink.withValues(alpha: 0.06),
-      ),
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
     );
   }
 }

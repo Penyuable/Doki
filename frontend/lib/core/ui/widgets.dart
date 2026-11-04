@@ -6,9 +6,12 @@ import 'package:flutter/material.dart';
 import '../../domain/models/card_model.dart';
 import '../theme/app_theme.dart';
 import 'clay.dart';
+import 'creature_models.dart';
 import 'creature_avatar.dart';
 
+export 'arena_table.dart';
 export 'clay.dart';
+export 'creature_models.dart';
 export 'creature_avatar.dart';
 
 /// Latar polos pastel dengan beberapa gumpalan clay dekoratif.
@@ -543,7 +546,9 @@ class CardArtwork extends StatelessWidget {
         fit: StackFit.expand,
         children: <Widget>[
           CreatureScene(card: card, animate: animate, mirrored: mirrored),
-          if (url.startsWith('https://'))
+          // Render model 3D lokal lebih diutamakan; gambar CMS hanya untuk
+          // kartu tanpa model (mis. spell).
+          if (url.startsWith('https://') && CreatureModels.keyOf(card) == null)
             CachedNetworkImage(
               imageUrl: url,
               fit: BoxFit.cover,

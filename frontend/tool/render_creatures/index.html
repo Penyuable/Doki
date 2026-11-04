@@ -1,0 +1,165 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Render kreatur</title>
+<script type="importmap">
+{ "imports": {
+  "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+} }
+</script>
+<style>body { margin: 0; font: 12px sans-serif; } canvas { display: block; }</style>
+</head>
+<body>
+<div id="log"></div>
+<script type="module">
+// Render tiap model GLB ke WebP 512x512 transparan secara sinkron
+// (tidak bergantung requestAnimationFrame, jadi aman walau jendela tidak fokus).
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { OutlineEffect } from 'three/addons/effects/OutlineEffect.js';
+
+const SIZE = 512;
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1);
+renderer.setSize(SIZE, SIZE);
+renderer.setClearColor(0x000000, 0);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envMap = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+const loader = new GLTFLoader();
+
+// Gaya kartun: cel-shading 3 tingkat + garis tinta (OutlineEffect).
+const toonRamp = (() => {
+  const data = new Uint8Array([120, 120, 120, 255, 200, 200, 200, 255, 255, 255, 255, 255]);
+  const tex = new THREE.DataTexture(data, 3, 1, THREE.RGBAFormat);
+  tex.minFilter = THREE.NearestFilter;
+  tex.magFilter = THREE.NearestFilter;
+  tex.generateMipmaps = false;
+  tex.needsUpdate = true;
+  return tex;
+})();
+const outline = new OutlineEffect(renderer, {
+  defaultThickness: 0.011,
+  defaultColor: [0.09, 0.06, 0.14],
+  defaultAlpha: 1,
+});
+
+function toonify(model) {
+  model.traverse((o) => {
+    if (!o.isMesh) return;
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    const toon = mats.map((m) => new THREE.MeshToonMaterial({
+      color: m.color ? m.color.clone() : new THREE.Color(0xffffff),
+      map: m.map || null,
+      vertexColors: !!m.vertexColors,
+      gradientMap: toonRamp,
+      transparent: m.transparent,
+      opacity: m.opacity,
+      side: m.side,
+    }));
+    o.material = Array.isArray(o.material) ? toon : toon[0];
+  });
+}
+const log = (t) => (document.getElementById('log').textContent += t + ' | ');
+
+function renderModel(gltf, opts) {
+  const scene = new THREE.Scene();
+  if (!opts.toon) scene.environment = envMap;
+  const model = gltf.scene;
+  scene.add(model);
+  if (opts.toon) toonify(model);
+
+  // Pose idle pada waktu tetap.
+  const clips = gltf.animations || [];
+  const clip = clips.find((c) => /idle/i.test(c.name) && !/hit|jump/i.test(c.name)) || clips[0];
+  if (clip) {
+    const mixer = new THREE.AnimationMixer(model);
+    mixer.clipAction(clip).play();
+    mixer.update(Math.min(0.4, clip.duration * 0.3));
+  }
+  model.updateMatrixWorld(true);
+  model.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
+
+  let box = new THREE.Box3().setFromObject(model);
+  if (![box.min.x, box.max.y].every(Number.isFinite)) {
+    // Beberapa mesh bertulang menghasilkan NaN; pakai box geometri mentah.
+    box = new THREE.Box3();
+    model.traverse((o) => {
+      if (!o.isMesh) return;
+      o.geometry.computeBoundingBox();
+      box.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld));
+    });
+  }
+  const center = box.getCenter(new THREE.Vector3());
+  const sphere = box.getBoundingSphere(new THREE.Sphere());
+
+  // Bayangan lantai lembut.
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(sphere.radius * 8, sphere.radius * 8),
+    new THREE.ShadowMaterial({ opacity: 0.22 }),
+  );
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = box.min.y;
+  ground.receiveShadow = true;
+  scene.add(ground);
+
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xb9b3d8, 0.9));
+  const key = new THREE.DirectionalLight(0xffffff, 2.2);
+  key.position.set(center.x + sphere.radius * 2, center.y + sphere.radius * 4, center.z + sphere.radius * 3);
+  key.target.position.copy(center);
+  key.castShadow = true;
+  key.shadow.mapSize.set(1024, 1024);
+  const s = sphere.radius * 2;
+  Object.assign(key.shadow.camera, { left: -s, right: s, top: s, bottom: -s, near: 0.01, far: sphere.radius * 12 });
+  key.shadow.radius = 6;
+  scene.add(key, key.target);
+  const rim = new THREE.DirectionalLight(0xd8ccff, 1.0);
+  rim.position.set(center.x - sphere.radius * 3, center.y + sphere.radius, center.z - sphere.radius * 3);
+  scene.add(rim);
+
+  const fov = 28;
+  const camera = new THREE.PerspectiveCamera(fov, 1, sphere.radius / 100, sphere.radius * 100);
+  const dist = (sphere.radius / Math.sin(THREE.MathUtils.degToRad(fov / 2))) * opts.zoom;
+  const yaw = THREE.MathUtils.degToRad(opts.yaw);
+  const pitch = THREE.MathUtils.degToRad(opts.pitch);
+  camera.position.set(
+    center.x + dist * Math.sin(yaw) * Math.cos(pitch),
+    center.y + dist * Math.sin(pitch),
+    center.z + dist * Math.cos(yaw) * Math.cos(pitch),
+  );
+  camera.lookAt(center.x, center.y - sphere.radius * 0.05, center.z);
+
+  if (opts.toon) {
+    renderer.toneMapping = THREE.NoToneMapping;
+    ground.visible = false;
+    scene.add(new THREE.AmbientLight(0xffffff, 0.35));
+    outline.render(scene, camera);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  } else {
+    renderer.render(scene, camera);
+  }
+  return renderer.domElement.toDataURL('image/webp', 0.92);
+}
+
+window.renderAll = async (names, opts = {}) => {
+  const o = { yaw: 28, pitch: 12, zoom: 0.92, ...opts };
+  for (const name of names) {
+    const gltf = await loader.loadAsync(`/models/${name}.glb`);
+    const url = renderModel(gltf, o);
+    const res = await fetch(`/save/${name}.webp`, { method: 'POST', body: url });
+    log(`${name}: ${await res.text()}`);
+  }
+  return document.getElementById('log').textContent;
+};
+</script>
+</body>
+</html>

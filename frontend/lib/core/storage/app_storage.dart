@@ -15,6 +15,8 @@ class AppStorage {
   static const String kCatalogPayload = 'catalog.payload';
   static const String kCatalogVersion = 'catalog.version';
   static const String kInventoryPayload = 'inventory.payload';
+  static const String kOnboarded = 'onboarded';
+  static const String kTableTheme = 'table_theme';
 
   final FlutterSecureStorage _secure;
   final Box<dynamic> _settings;
@@ -67,6 +69,11 @@ class AppStorage {
   }
 
   String? get localeCode => _settings.get(kLocale) as String?;
+
+  String? getString(String key) {
+    final value = _settings.get(key);
+    return value is String ? value : null;
+  }
 
   bool getBool(String key, {bool fallback = false}) {
     final value = _settings.get(key);

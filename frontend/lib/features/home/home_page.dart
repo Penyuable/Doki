@@ -5,8 +5,11 @@ import '../../core/config/game_config.dart';
 import '../../core/i18n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/ui/widgets.dart';
+import '../../domain/models/inventory_model.dart';
 import '../auth/auth_cubit.dart';
 import '../battle/battle_setup_page.dart';
+import '../collection/collection_cubit.dart';
+import '../onboarding/how_to_play.dart';
 import '../profile/profile_cubit.dart';
 import '../shell/home_shell.dart';
 
@@ -90,8 +93,12 @@ class HomePage extends StatelessWidget {
                   ),
                 ),
                 WalletChips(gold: user.gold, gems: user.gems),
+                const SizedBox(width: 8),
+                const HelpButton(),
               ],
             ),
+            const SizedBox(height: 18),
+            _BattleHero(onTap: () => _openBattle(context)),
             const SizedBox(height: 18),
             Panel(
               child: Column(
@@ -132,15 +139,6 @@ class HomePage extends StatelessWidget {
               children: <Widget>[
                 Expanded(
                   child: _QuickAction(
-                    icon: Icons.sports_martial_arts_rounded,
-                    label: strings.t('home.battleCta'),
-                    color: AppTheme.attack,
-                    onTap: () => _openBattle(context),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _QuickAction(
                     icon: Icons.auto_awesome_rounded,
                     label: strings.t('home.gachaCta'),
                     color: AppTheme.accent,
@@ -159,6 +157,7 @@ class HomePage extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 18),
+            const _OwnedCarousel(),
             SectionHeader(title: strings.t('home.activeDeck')),
             Panel(
               child: Row(
@@ -381,6 +380,116 @@ class _QuickAction extends StatelessWidget {
               fontSize: 11.5,
               fontWeight: FontWeight.w800,
               color: AppTheme.ink,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Ajakan utama di Beranda: tombol besar menuju arena.
+class _BattleHero extends StatelessWidget {
+  const _BattleHero({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    return Clay(
+      color: AppTheme.primary,
+      radius: 30,
+      onTap: onTap,
+      padding: const EdgeInsets.fromLTRB(20, 18, 12, 18),
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  strings.t('home.heroTitle'),
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  strings.t('home.heroBody'),
+                  style: const TextStyle(color: Colors.white, height: 1.3),
+                ),
+                const SizedBox(height: 14),
+                ClayPill(
+                  label: strings.t('home.battleCta'),
+                  icon: Icons.play_arrow_rounded,
+                  color: AppTheme.warning,
+                  fontSize: 14,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(
+            width: 120,
+            height: 120,
+            child: ModelCreature(modelKey: 'dragon_evolved', seed: 7),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Carousel kartu milik pemain (paling langka dulu) — sentuh untuk ke Koleksi.
+class _OwnedCarousel extends StatelessWidget {
+  const _OwnedCarousel();
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    final collection = context.watch<CollectionCubit>().state;
+    if (collection is! CollectionReady || collection.items.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final items = List<InventoryItem>.from(collection.items)
+      ..sort((a, b) {
+        final byRarity = b.card.rarity.index - a.card.rarity.index;
+        return byRarity != 0 ? byRarity : a.card.name.compareTo(b.card.name);
+      });
+    final shown = items.take(10).toList(growable: false);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          SectionHeader(
+            title: strings.t('home.myMonsters'),
+            trailing: TextButton(
+              onPressed: () => ShellNavigator.of(context).select(1),
+              child: Text(strings.t('home.seeAll')),
+            ),
+          ),
+          SizedBox(
+            height: 168,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              clipBehavior: Clip.none,
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              itemCount: shown.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (context, index) {
+                final item = shown[index];
+                return SizedBox(
+                  width: 112,
+                  child: CardTile(
+                    card: item.card,
+                    quantity: item.quantity > 1 ? item.quantity : null,
+                    onTap: () => ShellNavigator.of(context).select(1),
+                  ),
+                );
+              },
             ),
           ),
         ],

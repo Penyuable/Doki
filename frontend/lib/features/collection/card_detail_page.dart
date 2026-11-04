@@ -10,7 +10,6 @@ import '../../domain/models/card_model.dart';
 import '../../domain/models/deck_model.dart';
 import '../battle/battle_moves.dart';
 import '../deck/deck_builder_page.dart';
-import 'card_viewer_3d_page.dart';
 
 class CardDetailPage extends StatelessWidget {
   const CardDetailPage({
@@ -221,18 +220,6 @@ class CardDetailPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 22),
               ],
-              FilledButton.tonalIcon(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => CardViewer3DPage(card: card),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.view_in_ar_rounded),
-                label: Text(strings.t('card.3d')),
-              ),
-              const SizedBox(height: 10),
               FilledButton.icon(
                 onPressed: ownedCount > 0
                     ? () => _addToDeck(context)

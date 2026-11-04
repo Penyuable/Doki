@@ -123,6 +123,42 @@ cd frontend
 flutter test tool/generate_app_icon_test.dart
 ```
 
+### Ilustrasi kreatur
+
+Kartu memakai ilustrasi bergaya kartun (cel-shading + garis tinta) di
+`frontend/assets/creatures/*.webp`. Ilustrasi dirender dari model Quaternius (CC0)
+di `frontend/tool/render_creatures/models/` — model 3D **tidak** dibundel di app.
+Setelah menambah/mengganti model, render ulang:
+
+```bash
+python frontend/tool/render_creatures/server.py frontend/tool/render_creatures/models frontend/assets/creatures
+# buka http://127.0.0.1:8770 di browser, lalu di console:
+#   await renderAll(['dino', 'pig'], {zoom: 0.8, toon: true, yaw: 22})
+```
+
+Pemetaan kartu → ilustrasi ada di `frontend/lib/core/ui/creature_models.dart`.
+
+### Build iOS
+
+iOS **tidak bisa** di-build dari Windows — butuh macOS + Xcode. Dua jalur:
+
+1. **GitHub Actions (tanpa Mac):** workflow `.github/workflows/ios-build.yml` berjalan
+   otomatis saat push ke `main` (atau manual lewat tab *Actions → iOS build → Run workflow*).
+   Hasilnya artifact `dokimon-ios-unsigned` berisi `dokimon-unsigned.ipa`.
+   Pasang ke iPhone dari Windows dengan **Sideloadly** atau **AltStore** memakai Apple ID
+   (Apple ID gratis: app harus ditandatangani ulang tiap 7 hari).
+2. **Mac + Xcode:**
+
+```bash
+cd frontend
+flutter build ios --release
+# atau buka ios/Runner.xcworkspace di Xcode, pilih Team, lalu Run ke iPhone
+```
+
+Distribusi ke banyak pengguna (TestFlight/App Store) butuh Apple Developer Program.
+Aplikasi dikunci ke orientasi portrait; ikon iOS dihasilkan tanpa kanal alpha
+(syarat App Store) oleh `tool/generate_app_icon_test.dart`.
+
 ### Build APK release
 
 ```bash

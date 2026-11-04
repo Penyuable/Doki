@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../domain/models/card_model.dart';
 import '../theme/app_theme.dart';
+import 'creature_models.dart';
 
 /// Palet volumetrik per elemen: highlight, base, shadow, aksen fitur.
 class CreaturePalette {
@@ -1906,33 +1907,155 @@ class CreatureScene extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final modelKey = CreatureModels.keyOf(card);
     return ColoredBox(
       color: AppTheme.elementPastel(card.element),
       child: CustomPaint(
-        painter: _StagePainter(AppTheme.elementColor(card.element)),
+        painter: _StagePainter(
+          AppTheme.elementColor(card.element),
+          aura: card.rarity.isRarePlus
+              ? AppTheme.rarityColor(card.rarity)
+              : null,
+        ),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(4, 8, 4, 0),
-          child: CreatureAvatar(
-            card: card,
-            animate: animate,
-            mirrored: mirrored,
-          ),
+          child: modelKey == null
+              ? CreatureAvatar(card: card, animate: animate, mirrored: mirrored)
+              : ModelCreature(
+                  modelKey: modelKey,
+                  seed: creatureSeed(card.id),
+                  animate: animate,
+                  mirrored: mirrored,
+                  fallback: CreatureAvatar(
+                    card: card,
+                    animate: animate,
+                    mirrored: mirrored,
+                  ),
+                ),
         ),
       ),
     );
   }
 }
 
+/// Render model 3D (foto diam dari GLB) dengan animasi idle ringan:
+/// bernapas, sedikit mengayun, dan bisa dicerminkan untuk sisi lawan.
+class ModelCreature extends StatefulWidget {
+  const ModelCreature({
+    super.key,
+    required this.modelKey,
+    this.seed = 0,
+    this.animate = true,
+    this.mirrored = false,
+    this.fallback,
+  });
+
+  final String modelKey;
+  final int seed;
+  final bool animate;
+  final bool mirrored;
+
+  /// Ditampilkan bila aset gambar gagal dimuat.
+  final Widget? fallback;
+
+  @override
+  State<ModelCreature> createState() => _ModelCreatureState();
+}
+
+class _ModelCreatureState extends State<ModelCreature>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: Duration(milliseconds: 2400 + widget.seed % 800),
+    value: (widget.seed % 100) / 100,
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _sync();
+  }
+
+  @override
+  void didUpdateWidget(covariant ModelCreature oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _sync();
+  }
+
+  void _sync() {
+    final reduce = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    final run = widget.animate && !reduce;
+    if (run && !_controller.isAnimating) {
+      _controller.repeat();
+    } else if (!run && _controller.isAnimating) {
+      _controller.stop();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final image = Image.asset(
+      CreatureModels.imageAsset(widget.modelKey),
+      fit: BoxFit.contain,
+      gaplessPlayback: true,
+      filterQuality: FilterQuality.medium,
+      errorBuilder: (context, error, stack) =>
+          widget.fallback ?? const SizedBox.shrink(),
+    );
+    return RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: _controller,
+        child: image,
+        builder: (context, child) {
+          final t = _controller.value * math.pi * 2;
+          final breathe = math.sin(t) * 0.025;
+          final transform = Matrix4.identity()
+            ..translateByDouble(0, -math.sin(t) * 2.5, 0, 1)
+            ..rotateZ(math.sin(t * 0.5) * 0.025)
+            ..scaleByDouble(
+              (widget.mirrored ? -1 : 1) * (1 - breathe * 0.4),
+              1 + breathe,
+              1,
+              1,
+            );
+          return Transform(
+            alignment: Alignment.bottomCenter,
+            transform: transform,
+            child: child,
+          );
+        },
+      ),
+    );
+  }
+}
+
 class _StagePainter extends CustomPainter {
-  const _StagePainter(this.color);
+  const _StagePainter(this.color, {this.aura});
 
   final Color color;
+
+  /// Lingkar aura rarity (Rare+).
+  final Color? aura;
 
   @override
   void paint(Canvas canvas, Size size) {
     // Lingkaran latar besar (warna solid tipis), lalu lantai bundar.
+    final center = Offset(size.width / 2, size.height * 0.45);
+    if (aura != null) {
+      canvas.drawCircle(
+        center,
+        size.shortestSide * 0.47,
+        Paint()..color = aura!.withValues(alpha: 0.22),
+      );
+    }
     canvas.drawCircle(
-      Offset(size.width / 2, size.height * 0.45),
+      center,
       size.shortestSide * 0.42,
       Paint()..color = Colors.white.withValues(alpha: 0.35),
     );
@@ -1950,5 +2073,5 @@ class _StagePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _StagePainter oldDelegate) =>
-      oldDelegate.color != color;
+      oldDelegate.color != color || oldDelegate.aura != aura;
 }

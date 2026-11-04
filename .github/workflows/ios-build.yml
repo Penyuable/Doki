@@ -1,0 +1,51 @@
+name: iOS build
+
+# Build iOS harus di macOS (Xcode). Workflow ini menghasilkan IPA tanpa tanda
+# tangan yang bisa dipasang lewat Sideloadly/AltStore memakai Apple ID,
+# atau ditandatangani ulang di Xcode.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/ios-build.yml'
+
+jobs:
+  build-ios:
+    runs-on: macos-15
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.8
+          cache: true
+
+      - name: Dependencies
+        run: flutter pub get
+
+      - name: Analyze & test
+        run: |
+          flutter analyze
+          flutter test --concurrency=1
+
+      - name: Build iOS (tanpa codesign)
+        run: flutter build ios --release --no-codesign
+
+      - name: Kemas IPA
+        run: |
+          mkdir -p Payload
+          cp -R build/ios/iphoneos/Runner.app Payload/
+          zip -qry dokimon-unsigned.ipa Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dokimon-ios-unsigned
+          path: frontend/dokimon-unsigned.ipa
+          retention-days: 14

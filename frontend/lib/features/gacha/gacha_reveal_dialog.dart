@@ -78,54 +78,66 @@ class _GachaRevealDialogState extends State<GachaRevealDialog> {
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
     final allRevealed = _revealed >= widget.results.length;
-    final columns = widget.results.length == 1 ? 1 : 2;
+    final single = widget.results.length == 1;
+    final maxGridHeight = MediaQuery.sizeOf(context).height * 0.58;
 
     return Dialog(
       insetPadding: const EdgeInsets.all(12),
       backgroundColor: Colors.transparent,
-      child: AppBackground(
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: AppTheme.ink.withValues(alpha: 0.08)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Row(
-                children: <Widget>[
-                  Expanded(
-                    child: Text(
-                      strings.t('gacha.reveal'),
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w900,
-                          ),
+      child: Clay(
+        color: AppTheme.background,
+        radius: 32,
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: Text(
+                    strings.t('gacha.reveal'),
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w900,
+                        ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ],
+            ),
+            if (!allRevealed)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  strings.t('gacha.revealHint'),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+            if (single)
+              Center(
+                child: SizedBox(
+                  width: (maxGridHeight * 2 / 3).clamp(160.0, 240.0),
+                  child: AspectRatio(
+                    aspectRatio: 2 / 3,
+                    child: _RevealCard(
+                      result: widget.results.first,
+                      revealed: _revealed > 0,
+                      reduceMotion: widget.reduceMotion,
+                      onTap: _revealed > 0 ? null : _revealNext,
                     ),
                   ),
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(false),
-                    icon: const Icon(Icons.close_rounded),
-                  ),
-                ],
-              ),
-              if (!allRevealed)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(
-                    strings.t('gacha.revealHint'),
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
                 ),
+              )
+            else
               ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxHeight: MediaQuery.sizeOf(context).height * 0.58,
-                ),
+                constraints: BoxConstraints(maxHeight: maxGridHeight),
                 child: GridView.builder(
                   shrinkWrap: true,
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: columns,
+                  padding: const EdgeInsets.all(4),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
                     mainAxisSpacing: 10,
                     crossAxisSpacing: 10,
                     childAspectRatio: 2 / 3,
@@ -141,41 +153,38 @@ class _GachaRevealDialogState extends State<GachaRevealDialog> {
                   },
                 ),
               ),
-              const SizedBox(height: 10),
+            const SizedBox(height: 10),
+            if (!allRevealed)
+              ClayButton(
+                label: strings.t('gacha.skip'),
+                icon: Icons.fast_forward_rounded,
+                expand: true,
+                onPressed: _revealAll,
+              )
+            else
               Row(
                 children: <Widget>[
-                  if (!allRevealed)
-                    TextButton.icon(
-                      onPressed: _revealAll,
-                      icon: const Icon(Icons.fast_forward_rounded, size: 18),
-                      label: Text(strings.t('gacha.skip')),
-                    )
-                  else
-                    Expanded(
-                      child: FilledButton.tonal(
-                        onPressed: () => Navigator.of(context).pop(true),
-                        child: Text(strings.t('gacha.pullAgain')),
-                      ),
+                  Expanded(
+                    child: ClayButton(
+                      label: strings.t('gacha.pullAgain'),
+                      icon: Icons.refresh_rounded,
+                      color: AppTheme.surface,
+                      foreground: AppTheme.primary,
+                      expand: true,
+                      onPressed: () => Navigator.of(context).pop(true),
                     ),
-                  if (!allRevealed) const Spacer(),
-                  if (!allRevealed)
-                    FilledButton(
-                      onPressed: _revealAll,
-                      child: Text(strings.t('common.done')),
-                    )
-                  else ...<Widget>[
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: FilledButton(
-                        onPressed: () => Navigator.of(context).pop(false),
-                        child: Text(strings.t('common.done')),
-                      ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ClayButton(
+                      label: strings.t('common.done'),
+                      expand: true,
+                      onPressed: () => Navigator.of(context).pop(false),
                     ),
-                  ],
+                  ),
                 ],
               ),
-            ],
-          ),
+          ],
         ),
       ),
     );
@@ -209,7 +218,13 @@ class _RevealCard extends StatelessWidget {
         curve: Curves.easeOutCubic,
         builder: (context, value, _) {
           final showFront = value >= 0.5 || reduceMotion;
-          final rotation = value * math.pi;
+          // Sisi depan berputar dari -90° ke 0°, bukan 90°→180°, supaya
+          // tidak tampil terbalik seperti cermin setelah kartu dibuka.
+          final rotation = reduceMotion
+              ? 0.0
+              : showFront
+                  ? (value - 1) * math.pi
+                  : value * math.pi;
           return Transform(
             alignment: Alignment.center,
             transform: Matrix4.identity()

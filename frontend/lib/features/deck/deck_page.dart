@@ -153,7 +153,7 @@ class _DeckView extends StatelessWidget {
                               ?.copyWith(fontWeight: FontWeight.w900),
                         ),
                         Text(
-                          strings.t('deck.size', <String, String>{
+                          strings.t('deck.deckCount', <String, String>{
                             'count': decks.length.toString(),
                             'max': GameConfig.maxDecks.toString(),
                           }),

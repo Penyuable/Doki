@@ -11,6 +11,7 @@ import '../../core/ui/widgets.dart';
 import '../../domain/models/battle_api_models.dart';
 import '../../domain/models/card_model.dart';
 import '../auth/auth_cubit.dart';
+import '../onboarding/how_to_play.dart';
 import '../settings/settings_cubit.dart';
 import 'battle_cubit.dart';
 import 'battle_fx.dart';
@@ -50,6 +51,9 @@ class _ArenaView extends StatelessWidget {
     final reduceMotion = context.select<SettingsCubit, bool>(
       (cubit) => cubit.state.reduceMotion,
     );
+    final tableTheme = context.select<SettingsCubit, TableTheme>(
+      (cubit) => cubit.state.tableTheme,
+    );
 
     return BlocBuilder<BattleCubit, BattleSessionState>(
       builder: (context, state) {
@@ -76,6 +80,11 @@ class _ArenaView extends StatelessWidget {
               icon: const Icon(Icons.close_rounded),
             ),
             actions: <Widget>[
+              IconButton(
+                tooltip: strings.t('help.title'),
+                onPressed: () => showHowToPlay(context),
+                icon: const Icon(Icons.help_outline_rounded),
+              ),
               IconButton(
                 tooltip: strings.t('battle.log'),
                 onPressed: () => _showLog(context, battle, strings),
@@ -107,38 +116,55 @@ class _ArenaView extends StatelessWidget {
                             strings: strings,
                           ),
                           Expanded(
-                            flex: 3,
-                            child: _BoardView(
-                              units: battle.bot.board,
-                              battle: battle,
-                              isPlayer: false,
-                              interactive: false,
-                              showSlots: true,
-                              onTap: null,
-                              strings: strings,
-                            ),
-                          ),
-                          _TurnStrip(
-                            battle: battle,
-                            busy: state.busy,
-                            strings: strings,
-                          ),
-                          Expanded(
-                            flex: 3,
-                            child: _BoardView(
-                              units: battle.player.board,
-                              battle: battle,
-                              isPlayer: true,
-                              interactive: interactive,
-                              showSlots: true,
-                              onTap: interactive
-                                  ? (unit) => _openUnitActions(
-                                        context,
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(10, 2, 10, 2),
+                              child: ArenaTable(
+                                theme: tableTheme,
+                                child: Column(
+                                  children: <Widget>[
+                                    Expanded(
+                                      flex: 3,
+                                      child: _BoardView(
+                                        units: battle.bot.board,
+                                        battle: battle,
+                                        isPlayer: false,
+                                        interactive: false,
+                                        showSlots: true,
+                                        onTap: null,
+                                        strings: strings,
+                                      ),
+                                    ),
+                                    _TurnStrip(
+                                      battle: battle,
+                                      busy: state.busy,
+                                      strings: strings,
+                                      hint: _nextStepHint(
                                         context.read<BattleCubit>(),
-                                        unit,
-                                      )
-                                  : null,
-                              strings: strings,
+                                        state,
+                                        strings,
+                                      ),
+                                    ),
+                                    Expanded(
+                                      flex: 3,
+                                      child: _BoardView(
+                                        units: battle.player.board,
+                                        battle: battle,
+                                        isPlayer: true,
+                                        interactive: interactive,
+                                        showSlots: true,
+                                        onTap: interactive
+                                            ? (unit) => _openUnitActions(
+                                                  context,
+                                                  context.read<BattleCubit>(),
+                                                  unit,
+                                                )
+                                            : null,
+                                        strings: strings,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
                           ),
                           _SideHeader(
@@ -203,7 +229,7 @@ class _ArenaView extends StatelessWidget {
   ) async {
     final options = cubit.playOptionsForHand(handIndex);
     if (options.isEmpty) {
-      _reportError(context, AppStrings.of(context).t('battle.noActions'));
+      _showInfo(context, _cantPlayReason(context, cubit, handIndex));
       return;
     }
 
@@ -440,6 +466,72 @@ class _ArenaView extends StatelessWidget {
       }
     }
     return id;
+  }
+
+  /// Langkah berikutnya yang disarankan, dari aksi legal engine saat ini.
+  String? _nextStepHint(
+    BattleCubit cubit,
+    BattleSessionState state,
+    AppStrings strings,
+  ) {
+    final battle = state.battle;
+    if (battle.isTerminal) return null;
+    if (battle.activeSide != BattleSide.player || state.busy) {
+      return strings.t('battle.hint.botTurn');
+    }
+    for (var i = 0; i < battle.player.hand.length; i++) {
+      if (cubit.playOptionsForHand(i).isNotEmpty) {
+        return strings.t('battle.hint.play');
+      }
+    }
+    for (final unit in battle.player.board) {
+      if (cubit.attackOptionsFor(unit.instanceId).isNotEmpty ||
+          cubit.abilityOptionsFor(unit.instanceId).isNotEmpty) {
+        return strings.t('battle.hint.act');
+      }
+    }
+    return strings.t('battle.hint.endTurn');
+  }
+
+  /// Penjelasan kenapa kartu di tangan tidak bisa dimainkan.
+  String _cantPlayReason(
+    BuildContext context,
+    BattleCubit cubit,
+    int handIndex,
+  ) {
+    final strings = AppStrings.of(context);
+    final battle = cubit.battle;
+    if (battle.activeSide != BattleSide.player) {
+      return strings.t('battle.cantPlay.turn');
+    }
+    final me = battle.player;
+    if (handIndex < 0 || handIndex >= me.hand.length) {
+      return strings.t('battle.noActions');
+    }
+    final card = me.hand[handIndex];
+    if (card.cost > me.energy) {
+      return strings.t('battle.cantPlay.energy', <String, String>{
+        'cost': '${card.cost}',
+        'energy': '${me.energy}',
+      });
+    }
+    if (card.isUnit && me.board.length >= battle.config.boardSlots) {
+      return strings.t('battle.cantPlay.board', <String, String>{
+        'slots': '${battle.config.boardSlots}',
+      });
+    }
+    return strings.t('battle.cantPlay.target');
+  }
+
+  void _showInfo(BuildContext context, String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          duration: const Duration(seconds: 2),
+        ),
+      );
   }
 
   void _reportError(BuildContext context, String? error) {
@@ -993,16 +1085,21 @@ class _EmptySlot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Clay(
-      color: AppTheme.surfaceHigh,
-      radius: 16,
-      pressed: true,
-      depth: 0.5,
+    // Tembus pandang agar motif meja tetap terlihat di bawah slot.
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.55),
+          width: 2,
+        ),
+      ),
       child: Center(
         child: Icon(
           isPlayer ? Icons.add_rounded : Icons.remove_rounded,
-          size: 20,
-          color: AppTheme.inkFaint,
+          size: 22,
+          color: Colors.white.withValues(alpha: 0.75),
         ),
       ),
     );
@@ -1014,22 +1111,27 @@ class _TurnStrip extends StatelessWidget {
     required this.battle,
     required this.busy,
     required this.strings,
+    this.hint,
   });
 
   final BattleState battle;
   final bool busy;
   final AppStrings strings;
 
+  /// Petunjuk langkah berikutnya untuk pemain (null = pakai label giliran).
+  final String? hint;
+
   @override
   Widget build(BuildContext context) {
     final isPlayer = battle.activeSide == BattleSide.player;
-    final label = battle.isTerminal
-        ? strings.t('common.done')
-        : isPlayer
-            ? strings.t('battle.yourTurn')
-            : busy
-                ? strings.t('battle.waitBot')
-                : strings.t('battle.botTurn');
+    final label = hint ??
+        (battle.isTerminal
+            ? strings.t('common.done')
+            : isPlayer
+                ? strings.t('battle.yourTurn')
+                : busy
+                    ? strings.t('battle.waitBot')
+                    : strings.t('battle.botTurn'));
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -1055,11 +1157,18 @@ class _TurnStrip extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 220),
+                child: Text(
+                  label,
+                  key: ValueKey<String>(label),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    height: 1.2,
+                  ),
                 ),
               ),
             ),
@@ -1088,6 +1197,8 @@ class _TurnStrip extends StatelessWidget {
   }
 }
 
+/// Kartu di tangan disusun seperti kipas: miring, saling menumpuk, dan
+/// kartu yang bisa dimainkan sedikit terangkat.
 class _HandView extends StatelessWidget {
   const _HandView({
     required this.battle,
@@ -1101,35 +1212,79 @@ class _HandView extends StatelessWidget {
   final AppStrings strings;
   final ValueChanged<int> onCardTap;
 
+  static const double _cardWidth = 84;
+  static const double _height = 150;
+
   @override
   Widget build(BuildContext context) {
     final hand = battle.player.hand;
+    if (hand.isEmpty) {
+      return SizedBox(
+        height: _height * 0.6,
+        child: Center(
+          child: Text(
+            strings.t('battle.noActions'),
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ),
+      );
+    }
 
     return SizedBox(
-      height: 128,
-      child: hand.isEmpty
-          ? Center(
-              child: Text(
-                strings.t('battle.noActions'),
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            )
-          : ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
-              itemCount: hand.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemBuilder: (context, index) {
-                final card = hand[index];
-                final playable =
-                    interactive && card.cost <= battle.player.energy;
-                return _HandCard(
-                  card: card,
-                  playable: playable,
-                  onTap: playable ? () => onCardTap(index) : null,
-                );
-              },
-            ),
+      height: _height,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final n = hand.length;
+          final width = constraints.maxWidth;
+          final spread = n == 1
+              ? 0.0
+              : math.min(64.0, (width - _cardWidth - 28) / (n - 1));
+          return Stack(
+            clipBehavior: Clip.none,
+            children: <Widget>[
+              for (var i = 0; i < n; i++)
+                _fanned(
+                  index: i,
+                  count: n,
+                  spread: spread,
+                  width: width,
+                  card: hand[i],
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _fanned({
+    required int index,
+    required int count,
+    required double spread,
+    required double width,
+    required CardModel card,
+  }) {
+    final t = index - (count - 1) / 2;
+    final playable = interactive && card.cost <= battle.player.energy;
+    final angle = (t * 0.085).clamp(-0.35, 0.35);
+    final lift = playable ? 12.0 : 0.0;
+    return AnimatedPositioned(
+      key: ValueKey<int>(index),
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOutBack,
+      left: width / 2 + t * spread - _cardWidth / 2,
+      top: 18 + t * t * 3.2 - lift,
+      width: _cardWidth,
+      child: AnimatedRotation(
+        duration: const Duration(milliseconds: 260),
+        turns: angle / (2 * math.pi),
+        alignment: Alignment.bottomCenter,
+        child: _HandCard(
+          card: card,
+          playable: playable,
+          onTap: interactive ? () => onCardTap(index) : null,
+        ),
+      ),
     );
   }
 }
@@ -1143,18 +1298,26 @@ class _HandCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final card = CardTile(card: this.card, onTap: onTap, animate: playable);
     return AnimatedOpacity(
       duration: const Duration(milliseconds: 200),
-      opacity: playable ? 1 : 0.42,
-      child: AnimatedSlide(
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOutBack,
-        offset: playable ? const Offset(0, -0.04) : Offset.zero,
-        child: SizedBox(
-          width: 82,
-          child: CardTile(card: card, onTap: onTap, animate: playable),
-        ),
-      ),
+      opacity: playable ? 1 : 0.55,
+      child: playable
+          ? DecoratedBox(
+              // Cahaya di sekeliling kartu yang bisa dimainkan.
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: <BoxShadow>[
+                  BoxShadow(
+                    color: AppTheme.warning.withValues(alpha: 0.75),
+                    blurRadius: 14,
+                    spreadRadius: 1,
+                  ),
+                ],
+              ),
+              child: card,
+            )
+          : card,
     );
   }
 }

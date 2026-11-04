@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../core/storage/app_storage.dart';
+import '../../core/ui/arena_table.dart';
 
 class AppSettings {
   const AppSettings({
@@ -8,12 +9,16 @@ class AppSettings {
     required this.reduceMotion,
     required this.haptics,
     required this.batterySaver,
+    this.tableTheme = TableTheme.wood,
   });
 
   final String localeCode;
   final bool reduceMotion;
   final bool haptics;
   final bool batterySaver;
+
+  /// Tema meja arena pilihan pemain.
+  final TableTheme tableTheme;
 
   static AppSettings fromStorage(AppStorage storage) {
     final code = storage.localeCode;
@@ -22,6 +27,9 @@ class AppSettings {
       reduceMotion: storage.getBool(AppStorage.kReduceMotion),
       haptics: storage.getBool(AppStorage.kHaptics, fallback: true),
       batterySaver: storage.getBool(AppStorage.kBatterySaver),
+      tableTheme: TableTheme.fromName(
+        storage.getString(AppStorage.kTableTheme),
+      ),
     );
   }
 
@@ -30,12 +38,14 @@ class AppSettings {
     bool? reduceMotion,
     bool? haptics,
     bool? batterySaver,
+    TableTheme? tableTheme,
   }) {
     return AppSettings(
       localeCode: localeCode ?? this.localeCode,
       reduceMotion: reduceMotion ?? this.reduceMotion,
       haptics: haptics ?? this.haptics,
       batterySaver: batterySaver ?? this.batterySaver,
+      tableTheme: tableTheme ?? this.tableTheme,
     );
   }
 }
@@ -64,5 +74,10 @@ class SettingsCubit extends Cubit<AppSettings> {
   Future<void> setBatterySaver(bool value) async {
     await _storage.setValue(AppStorage.kBatterySaver, value);
     emit(state.copyWith(batterySaver: value));
+  }
+
+  Future<void> setTableTheme(TableTheme value) async {
+    await _storage.setValue(AppStorage.kTableTheme, value.name);
+    emit(state.copyWith(tableTheme: value));
   }
 }
