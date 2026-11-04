@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -90,30 +88,22 @@ class RootGate extends StatefulWidget {
 }
 
 class _RootGateState extends State<RootGate> {
-  bool _splashElapsed = false;
-  Timer? _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    _timer = Timer(widget.minSplash, () {
-      if (mounted) setState(() => _splashElapsed = true);
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
+  /// Splash selesai memuat aset dan durasi minimum sudah lewat.
+  bool _splashDone = false;
 
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<AuthCubit, AuthState>(
       builder: (context, state) {
         final Widget page;
-        if (!_splashElapsed || state is AuthInitial || state is AuthRestoring) {
-          page = const SplashPage(key: ValueKey<String>('splash'));
+        if (!_splashDone || state is AuthInitial || state is AuthRestoring) {
+          page = SplashPage(
+            key: const ValueKey<String>('splash'),
+            minDuration: widget.minSplash,
+            onLoaded: () {
+              if (mounted) setState(() => _splashDone = true);
+            },
+          );
         } else if (state is AuthAuthenticated) {
           page = const HomeShell(key: ValueKey<String>('home'));
         } else {

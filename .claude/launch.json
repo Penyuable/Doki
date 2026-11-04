@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "backend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "backend", "run", "dev"],
+      "port": 8080
+    },
+    {
+      "name": "dokimon-web-static",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8766", "--directory", "C:\\Users\\LENOVO\\AppData\\Local\\Temp\\claude\\C--Vscode-Web-dokimon\\fe1cef89-8515-4a3d-bb71-cac47824074c\\scratchpad\\webcopy\\build\\web"],
+      "port": 8766
+    },
+    {
+      "name": "render-creatures",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["frontend/tool/render_creatures/server.py", "frontend/tool/render_creatures/models", "frontend/assets/creatures"],
+      "port": 8770
+    }
+  ]
+}
