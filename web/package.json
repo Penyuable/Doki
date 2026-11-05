@@ -1,0 +1,28 @@
+{
+  "name": "dokimon-web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dokimon TCG — versi web (Next.js). Port dari aplikasi Flutter di ../frontend.",
+  "type": "module",
+  "engines": { "node": ">=22.18" },
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "npx --yes serve@14.2.4 out -l 3000",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test --test-reporter=spec \"test/**/*.test.ts\"",
+    "catalog:sync": "node scripts/sync-catalog.mjs",
+    "catalog:check": "node scripts/sync-catalog.mjs --check"
+  },
+  "dependencies": {
+    "next": "15.5.29",
+    "react": "19.1.1",
+    "react-dom": "19.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.18.0",
+    "@types/react": "19.1.12",
+    "@types/react-dom": "19.1.9",
+    "typescript": "5.9.3"
+  }
+}
