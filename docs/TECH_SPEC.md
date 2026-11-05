@@ -46,6 +46,12 @@ dokimon/
 │   ├── .env.example
 │   ├── package.json
 │   └── tsconfig.json
+├── web/                          # klien web Next.js (lihat §16) — tambahan, Flutter tetap
+│   ├── src/app/                  # rute App Router (static export)
+│   ├── src/lib/                  # pure TS: battle/, domain/, data/, i18n/, ui/
+│   ├── src/components/           # React (clay UI, kreatur SVG, arena)
+│   ├── src/data/cards.seed.json  # salinan katalog bundled (scripts/sync-catalog.mjs)
+│   └── test/                     # node --test (engine golden vs Dart, bot, backend lokal)
 └── frontend/
     ├── lib/
     │   ├── core/
@@ -927,6 +933,7 @@ Semua animasi harus bisa di-skip (`skip()` → state `GachaSuccess`) dan menghor
 - [ ] Endpoint internal butuh `X-Admin-Token` (bandingkan `timingSafeEqual`).
 - [ ] Semua uang & inventory berubah hanya via service yang bertransaksi.
 - [ ] Client tidak menyimpan secret apa pun (cek `--dart-define` tidak berisi token rahasia).
+- [ ] Web: hanya `NEXT_PUBLIC_OFFLINE` & `NEXT_PUBLIC_API_BASE_URL` yang dibundel; token sesi web di `localStorage` (lihat §16.5 & Q-07).
 
 ---
 
@@ -994,3 +1001,82 @@ Block merge bila salah satu gagal. Coverage minimum: `gacha.math` & `battle/doma
 6. Error path ditangani (bukan hanya happy path).
 7. Perubahan kontrak API/CMS didokumentasikan di dokumen ini **dan** PRD bila menyentuh perilaku.
 8. PR description menyebut AC yang dipenuhi (mis. `AC-04.3`).
+
+---
+
+## 16. Web Client (Next.js)
+
+Versi web adalah **klien tambahan** di `web/`; aplikasi Flutter (`frontend/`) tetap klien mobile utama dan tidak diubah. Kontrak API, aturan battle, ekonomi, dan konten identik — web adalah port, bukan desain ulang aturan.
+
+### 16.1 Stack
+
+| Hal | Pilihan | Catatan |
+|---|---|---|
+| Framework | Next.js 15 (App Router) + React 19 + TypeScript strict | `output: 'export'` → situs statis di `web/out/`, bisa di-host di CDN mana pun |
+| State | React context (`AppProvider`) + kelas pure TS yang di-subscribe (`BattleSession`) | Tanpa library state tambahan |
+| Gaya | CSS token (`globals.css`, `components.css`) — palet clay dari `app_theme.dart` | Tanpa framework CSS |
+| Kreatur | SVG + animasi CSS; spesies & palet = `creature_avatar.dart` (`speciesOf`, `creatureSeed`) | Bob/kedip mati saat "Kurangi animasi" |
+| Test | `node --test` (TypeScript native Node ≥ 22.18) | Tanpa dependency test |
+
+### 16.2 Pemetaan modul Flutter → web
+
+| Flutter | Web |
+|---|---|
+| `features/battle/domain/battle_engine.dart`, `battle_models.dart` | `src/lib/battle/engine.ts`, `models.ts` |
+| `features/battle/domain/bot_ai.dart` | `src/lib/battle/bot-ai.ts` |
+| `features/battle/battle_cubit.dart` | `src/lib/battle/session.ts` (+ hook `use-battle-session.ts`) |
+| `dart:math` `Random(seed)` + `List.shuffle` | `src/lib/core/dart-random.ts` (port bit-per-bit) |
+| `core/utils/canonical_json.dart` + `package:crypto` | `src/lib/core/canonical-json.ts` + `sha256.ts` |
+| `data/local/local_backend.dart` (Hive) | `src/lib/data/local-backend.ts` (localStorage) |
+| `core/network/api_client.dart` (Dio) | `src/lib/data/api-client.ts` (fetch, transport bisa ditukar) |
+| `data/repositories/*` | `src/lib/data/repositories.ts` |
+| `domain/deck_rules.dart`, `domain/models/*` | `src/lib/domain/deck-rules.ts`, `models.ts`, `card.ts` |
+| `core/i18n/app_strings.dart` | `src/lib/i18n/base-strings.ts` (dihasilkan) + `web-strings.ts` |
+| `core/config/game_config.dart` | `src/lib/config/game-config.ts` |
+
+### 16.3 Determinisme lintas platform (I-04)
+
+- Engine & bot web memakai RNG **identik** dengan Dart VM: seed di-mix dengan Thomas Wang 64-bit (`uint64`, shift logis), state MWC `A = 0xffffda61`, diputar 4× saat konstruksi; `nextInt`, `nextDouble`, `nextBool`, dan `shuffle` mengikuti urutan pemanggilan Dart.
+- `double.round()` Dart (setengah menjauhi nol) → `dartRound()`; Math.round JS tidak dipakai langsung.
+- Seed bot = `seed ^ 0x9E3779B9` sebagai int 64-bit (`>>> 0` di JS).
+- Pesan log engine disalin persis (termasuk teks Indonesia) karena masuk ke `logHash`.
+- **Golden test** `web/test/battle-golden.test.ts`: 15 pertandingan bot-vs-bot penuh (5 seed × 3 level) harus menghasilkan `logHash` yang sama dengan engine Dart. Bila engine Dart berubah, regenerasi angka golden dari Dart dan perbarui test di PR yang sama.
+
+### 16.4 Mode offline vs server
+
+| | Offline (default, `NEXT_PUBLIC_OFFLINE=true`) | Server (`NEXT_PUBLIC_OFFLINE=false`) |
+|---|---|---|
+| Login | Pemain lokal otomatis | `/login` (register/login), refresh token single-flight |
+| Data | `LocalBackend` di browser, key `dokimon_offline.state` | Express API `NEXT_PUBLIC_API_BASE_URL` |
+| Invarian I-01/I-02 | Sengaja tidak berlaku (sama dengan offline mobile) | Server otoritatif |
+| CORS | – | Origin web harus ada di `CORS_ORIGINS` backend (default `http://localhost:3000`) |
+
+Katalog: network → cache `localStorage` (`dokimon.cache.catalog`) → bundled `src/data/cards.seed.json`. Salinan bundled dijaga sinkron dengan `content/cards/cards.json` oleh `npm run catalog:sync` / `catalog:check` (CI).
+
+### 16.5 Penyimpanan di browser
+
+| Key | Isi |
+|---|---|
+| `dokimon.settings` | bahasa, kurangi animasi, hemat baterai, getaran, tema meja, flag panduan |
+| `dokimon.session` | `accessToken` + `refreshToken` (mode server saja) |
+| `dokimon_offline.state` | progres mode offline |
+| `dokimon.cache.catalog`, `dokimon.cache.inventory` | cache fallback |
+
+Web tidak punya padanan `flutter_secure_storage`; token disimpan di `localStorage` origin app sehingga rentan bila terjadi XSS. Mitigasi saat ini: tanpa `dangerouslySetInnerHTML`, tanpa skrip pihak ketiga selain Google Fonts CSS. Opsi lebih aman (refresh token di cookie `HttpOnly`) butuh perubahan backend → Q-07.
+
+### 16.6 Perbedaan yang disengaja dari mobile
+
+- Arena di rute `/arena/` memegang match di memori; reload = sesi berakhir (sama dengan menutup app; resume belum ada di mobile juga).
+- Viewer 3D tidak ditautkan (keputusan PO Q-06); kreatur SVG 2D.
+- Pintasan keyboard `E` = akhiri giliran.
+- Getaran hanya di perangkat yang mendukung `navigator.vibrate` dan setelah ada gestur pengguna.
+
+### 16.7 Perintah
+
+```bash
+cd web
+npm install
+npm run dev              # http://localhost:3000 (offline default)
+npm run typecheck && npm test && npm run build   # build → web/out/
+npm run catalog:check    # CI: salinan katalog sinkron
+```

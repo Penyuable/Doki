@@ -28,6 +28,7 @@ Draft awal sudah benar arahnya. Tabel ini merangkum keputusan yang saya kunci su
 | 8 | 3D pakai "model_viewer_plus / WebView Three.js" | **model_viewer_plus (GLB)** untuk inspection; arena battle pakai **Flutter CustomPainter/Stack + animasi 2.5D**, bukan WebView penuh. | WebView di arena = FPS drop + sulit sync dengan state game. |
 | 9 | Auth tanpa detail token | Access token JWT 15 menit + **refresh token rotasi 30 hari** di `flutter_secure_storage`. | Standar keamanan mobile. |
 | 10 | Monetisasi tidak disebut | **Tanpa pembelian uang nyata di MVP.** Gem didapat dari progres. | Menghindari kewajiban regulasi loot box berbayar di awal. |
+| 11 | Hanya Android & iOS | **Tambahan (2026-11-06): versi web** di `web/` (Next.js) dengan fitur & aturan yang sama — onboarding, koleksi, gacha, deck, battle 3 level bot, profil, pengaturan, mode offline & server. Flutter tetap klien mobile. | Pemain bisa main dari browser tanpa instal; satu backend & satu katalog untuk semua platform. Detail implementasi: TECH_SPEC §16. |
 
 ---
 
@@ -87,6 +88,8 @@ Device target: Android 8.0+ (RAM ≥ 3 GB), iOS 14+. Prioritas uji: Snapdragon 6
 │  ├─ Domain (BattleEngine,    │        │  content/cards/manifest.json │
 │  │   BotAI, DeckValidator)   │        │  content/cards/images/*.webp │
 │  └─ Data (Dio, Hive, Secure) │        │  content/cards/models/*.glb  │
+│  Web App (Next.js, browser)  │        │                              │
+│  └─ port TS: engine/bot sama │        │                              │
 └───────────┬──────────────────┘        └──────────────▲───────────────┘
             │ HTTPS / JSON (JWT)                        │ fetch + ETag
             ▼                                           │ (jsDelivr / raw)
@@ -106,7 +109,7 @@ Device target: Android 8.0+ (RAM ≥ 3 GB), iOS 14+. Prioritas uji: Snapdragon 6
 | ID | Prinsip | Konsekuensi teknis |
 |---|---|---|
 | A-01 | **Server adalah sumber kebenaran** untuk saldo, inventory, pity, dan hasil gacha. | Client tidak boleh punya endpoint untuk menulis saldo. |
-| A-02 | **Battle dieksekusi di client** (offline-friendly) tapi hasilnya diverifikasi server. | Engine harus pure Dart, deterministic, dan menghasilkan `logHash`. |
+| A-02 | **Battle dieksekusi di client** (offline-friendly) tapi hasilnya diverifikasi server. | Engine harus pure Dart, deterministic, dan menghasilkan `logHash`. Klien web memakai port TypeScript yang wajib menghasilkan `logHash` identik untuk seed + aksi yang sama (golden test, TECH_SPEC §16.3). |
 | A-03 | **Katalog immutable per versi.** Gacha memakai snapshot versi tertentu. | Tabel `CatalogVersion` + `GachaPull.catalogVersion`. |
 | A-04 | **No secret di app bundle.** Tidak ada GitHub token / DB URL di Flutter. | Aset publik boleh; API key tidak. |
 | A-05 | **Graceful degradation.** Katalog offline → pakai cache Hive → bundled asset. | 3 lapis fallback. |

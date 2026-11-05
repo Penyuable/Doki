@@ -65,7 +65,7 @@ class _GachaViewState extends State<_GachaView> {
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 110),
           children: <Widget>[
-            Row(
+            Row(  
               children: <Widget>[
                 Expanded(
                   child: Column(

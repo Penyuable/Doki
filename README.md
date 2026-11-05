@@ -1,10 +1,11 @@
 # Dokimon TCG 3D
 
-Game **turn-based TCG single-player (vs bot)** untuk Android & iOS.
-Flutter (Dart) · Express.js + Prisma · **GitHub sebagai headless CMS** untuk kartu & aset 3D.
+Game **turn-based TCG single-player (vs bot)** untuk Android, iOS, dan **web**.
+Flutter (Dart) · Next.js (web) · Express.js + Prisma · **GitHub sebagai headless CMS** untuk kartu & aset 3D.
 
 > Status repo: **dokumen, konten, backend, dan aplikasi Flutter selesai diimplementasikan.**
 > Backend 56 test lulus; frontend `flutter analyze` bersih dan 42 test lulus; APK release sudah bisa dibangun.
+> Versi web (`web/`, Next.js): `tsc` bersih, 79 test lulus, static export berhasil — lihat [Versi web](#versi-web-nextjs).
 
 ---
 
@@ -96,7 +97,7 @@ Manifest saat ini: `catalogVersion 2026.11.01.1` · `sha256:1795e085…` · 25 k
 | Reward menang | 40 / 80 / 150 Gold (Easy/Medium/Master) + first win 200 Gold |
 | Starter | 1.000 Gold, 50 Gems, deck 20 kartu |
 
-Semua angka ada di `backend/src/config/economy.ts` + `frontend/lib/core/config/game_config.dart` — PRD §8 dan TECH_SPEC §6/§8 adalah rujukan nilainya.
+Semua angka ada di `backend/src/config/economy.ts` + `frontend/lib/core/config/game_config.dart` + `web/src/lib/config/game-config.ts` — PRD §8 dan TECH_SPEC §6/§8 adalah rujukan nilainya.
 
 ---
 
@@ -107,6 +108,10 @@ Flutter ──HTTPS/JWT──► Express API ──fetch 15 mnt──► GitHub 
    │                        │
    ├─ Hive cache            └─ Prisma (SQLite dev / Postgres prod)
    └─ Battle engine (pure Dart) + Bot AI (client-side, hasil diverifikasi server)
+
+Next.js (web) ──HTTPS/JWT──► Express API yang sama
+   ├─ localStorage cache / mode offline
+   └─ Battle engine + Bot AI (port TS, logHash identik dengan Dart)
 ```
 
 - **Gacha & wallet di server** (tidak bisa di-cheat).
@@ -220,6 +225,27 @@ menghubungi backend HTTP lokal; hapus cleartext bila backend sudah HTTPS.
 > `pubspec.yaml` mem-pin `path_provider_android: 2.2.17` lewat `dependency_overrides`.
 > Versi 2.3.x menarik plugin `jni` yang mewajibkan NDK/CMake; build APK tetap jalan
 > tanpa NDK dengan versi 2.2.x. Hapus override bila toolchain NDK sudah lengkap.
+
+---
+
+## Versi web (Next.js)
+
+Folder [`web/`](web/README.md) berisi versi browser dengan fitur yang sama dengan aplikasi mobile:
+onboarding & Cara Bermain, koleksi + filter, gacha 1x/10x dengan pity, deck builder, battle vs bot
+3 level, profil & hadiah harian, pengaturan (id/en, kurangi animasi, tema meja), mode offline dan
+mode server. Flutter **tidak diubah** — web adalah klien tambahan.
+
+```bash
+cd web
+npm install
+npm run dev                                   # http://localhost:3000 (offline, tanpa server)
+npm run typecheck && npm test && npm run build  # build statis → web/out/
+```
+
+Mode server: salin `web/.env.example` ke `web/.env.local`, set `NEXT_PUBLIC_OFFLINE=false`,
+lalu jalankan backend. Engine battle & bot web adalah port TypeScript yang **menghasilkan
+`logHash` identik** dengan engine Dart (golden test) — ubah engine = ubah Dart & TS bersamaan.
+CI: `.github/workflows/web.yml`.
 
 ---
 

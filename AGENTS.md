@@ -18,8 +18,13 @@ content/cards/        # CMS: cards.json + manifest.json + schema.json + aset
 scripts/              # build-catalog.mjs (validasi + checksum)
 backend/              # Express + TypeScript + Prisma (belum di-scaffold)
 frontend/             # Flutter (belum di-scaffold)
+web/                  # Next.js — klien web (port TS dari Flutter, TECH_SPEC §16)
 docs/                 # PRD, TECH_SPEC, AI_AGENT_GUIDE
 ```
+
+Engine battle & Bot AI ada di **dua bahasa** (Dart `frontend/lib/features/battle/domain/`
+dan TS `web/src/lib/battle/`). Mengubah salah satu = ubah keduanya di PR yang sama dan
+perbarui golden `web/test/battle-golden.test.ts` (TECH_SPEC §16.3).
 
 ## 2. Perintah standar (target setelah P0)
 
@@ -35,6 +40,11 @@ npm run typecheck && npm run lint && npm test
 # frontend
 cd frontend && flutter analyze && flutter test
 flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8080/api/v1
+
+# web (Next.js)
+cd web && npm run dev                     # http://localhost:3000
+npm run typecheck && npm test && npm run build
+npm run catalog:check                     # salinan katalog bundled sinkron
 ```
 
 Jangan menambah script baru tanpa mendokumentasikannya di README.
@@ -48,7 +58,7 @@ Jangan menambah script baru tanpa mendokumentasikannya di README.
 | I-01 | Roll gacha **hanya** di server. Client tidak pernah menentukan rarity. | Ekonomi bisa di-cheat |
 | I-02 | Saldo, XP, inventory, pity **hanya** diubah server, selalu dalam transaksi DB. | Saldo negatif / duplikasi reward |
 | I-03 | Deck: tepat 20 kartu, maks 3 per `cardId`, hanya kartu dimiliki, hanya `unit`/`spell`. Validasi server otoritatif. | Deck ilegal masuk battle |
-| I-04 | Battle engine **pure Dart**: tanpa `flutter`, tanpa I/O, tanpa `DateTime.now()`, RNG dari `seed`. | Tidak bisa dites, replay tidak deterministik |
+| I-04 | Battle engine **pure Dart**: tanpa `flutter`, tanpa I/O, tanpa `DateTime.now()`, RNG dari `seed`. Port web (`web/src/lib/battle/`) juga pure TS: tanpa React/DOM/`Date`, RNG `DartRandom`. | Tidak bisa dites, replay tidak deterministik |
 | I-05 | UI **tidak** menghitung damage/state sendiri; baca dari `BattleEvent`/engine. | Angka berbeda antar layar |
 | I-06 | Rate & harga diambil dari config/server, tidak hardcode di widget. | UI tidak sinkron dengan server |
 | I-07 | `content/cards/*` adalah kontrak; ubah schema = ubah `schema.json` + `TECH_SPEC §7.1` + PRD bila perlu. | Snapshot ditolak / app crash |
