@@ -30,14 +30,11 @@ class GachaPage extends StatelessWidget {
     );
   }
 }
-
 class _GachaView extends StatefulWidget {
   const _GachaView();
-
   @override
   State<_GachaView> createState() => _GachaViewState();
 }
-
 class _GachaViewState extends State<_GachaView> {
   String _currency = 'gold';
 

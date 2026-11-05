@@ -51,8 +51,6 @@ Future<void> main() async {
     runApp(const _BootstrapErrorApp());
   }
 }
-
-/// Dio yang dilayani backend lokal; katalog diambil dari aset bawaan.
 Future<Dio> _offlineDio() async {
   final raw = await rootBundle.loadString(CatalogRepository.assetPath);
   final decoded = jsonDecode(raw);
