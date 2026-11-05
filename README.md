@@ -154,20 +154,12 @@ cd frontend
 flutter test tool/generate_app_icon_test.dart
 ```
 
-### Ilustrasi kreatur
+### Karakter kreatur
 
-Kartu memakai ilustrasi bergaya kartun (cel-shading + garis tinta) di
-`frontend/assets/creatures/*.webp`. Ilustrasi dirender dari model Quaternius (CC0)
-di `frontend/tool/render_creatures/models/` — model 3D **tidak** dibundel di app.
-Setelah menambah/mengganti model, render ulang:
-
-```bash
-python frontend/tool/render_creatures/server.py frontend/tool/render_creatures/models frontend/assets/creatures
-# buka http://127.0.0.1:8770 di browser, lalu di console:
-#   await renderAll(['dino', 'pig'], {zoom: 0.8, toon: true, yaw: 22})
-```
-
-Pemetaan kartu → ilustrasi ada di `frontend/lib/core/ui/creature_models.dart`.
+Karakter kartu adalah chibi yang **digambar dengan kode** (`frontend/lib/core/ui/creature_avatar.dart`):
+13 spesies (dipilih dari nama kartu), gaya cel-shading + garis luar, tanpa aset gambar.
+Semua kreatur memakai satu jam animasi bersama (`CreatureClock`, ±30 fps) yang hanya
+berjalan selama ada kreatur di layar, dan berhenti total bila "Kurangi animasi" aktif.
 
 ### Build iOS
 

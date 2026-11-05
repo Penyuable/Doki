@@ -1,10 +1,10 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 import '../../domain/models/card_model.dart';
 import '../theme/app_theme.dart';
-import 'creature_models.dart';
 
 /// Palet volumetrik per elemen: highlight, base, shadow, aksen fitur.
 class CreaturePalette {
@@ -49,12 +49,65 @@ class CreaturePalette {
       };
 }
 
-/// Karakter chibi bergaya 3D yang digambar prosedural dari `card.id`.
-///
-/// Tidak butuh aset: bentuk tubuh, telinga, dan mata diturunkan dari hash id
-/// sehingga tiap kartu punya kreatur yang stabil. Efek 3D dihasilkan dari
-/// shading radial, rim light, parallax wajah, dan rotasi perspektif idle.
-class CreatureAvatar extends StatefulWidget {
+/// Jam animasi bersama untuk semua kreatur: satu [Ticker], dibatasi ~30 fps,
+/// hanya berjalan selama ada kreatur yang tampil. Kreatur cukup repaint
+/// (tanpa rebuild widget), jadi grid berisi banyak kartu tetap ringan.
+class CreatureClock extends ChangeNotifier {
+  CreatureClock._();
+
+  static final CreatureClock instance = CreatureClock._();
+
+  static const Duration _frame = Duration(milliseconds: 33);
+
+  Ticker? _ticker;
+  Duration _elapsed = Duration.zero;
+  Duration _lastNotified = Duration.zero;
+  Duration _offset = Duration.zero;
+  int _listeners = 0;
+
+  /// Ticker sedang berjalan (ada kreatur hidup di layar).
+  bool get isRunning => _ticker?.isActive ?? false;
+
+  /// Waktu berjalan dalam detik.
+  double get seconds => (_offset + _elapsed).inMicroseconds / 1e6;
+
+  @override
+  void addListener(VoidCallback listener) {
+    super.addListener(listener);
+    _listeners += 1;
+    if (_listeners == 1) {
+      _ticker ??= Ticker(_tick, debugLabel: 'CreatureClock');
+      if (!_ticker!.isActive) _ticker!.start();
+    }
+  }
+
+  @override
+  void removeListener(VoidCallback listener) {
+    super.removeListener(listener);
+    _listeners -= 1;
+    if (_listeners <= 0) {
+      _listeners = 0;
+      if (_ticker?.isActive ?? false) {
+        _offset += _elapsed;
+        _elapsed = Duration.zero;
+        _lastNotified = Duration.zero;
+        _ticker!.stop();
+      }
+    }
+  }
+
+  void _tick(Duration elapsed) {
+    _elapsed = elapsed;
+    if (elapsed - _lastNotified < _frame) return;
+    _lastNotified = elapsed;
+    notifyListeners();
+  }
+}
+
+/// Karakter chibi lucu bergaya ilustrasi anime (cel-shading + garis luar),
+/// digambar prosedural dari `card.id`. Animasi idle: melompat kecil dengan
+/// squash & stretch, bergoyang, melirik, berkedip, dan sesekali tersenyum.
+class CreatureAvatar extends StatelessWidget {
   const CreatureAvatar({
     super.key,
     required this.card,
@@ -69,78 +122,18 @@ class CreatureAvatar extends StatefulWidget {
   final bool mirrored;
 
   @override
-  State<CreatureAvatar> createState() => _CreatureAvatarState();
-}
-
-class _CreatureAvatarState extends State<CreatureAvatar>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    final seed = creatureSeed(widget.card.id);
-    _controller = AnimationController(
-      vsync: this,
-      duration: Duration(milliseconds: 2600 + seed % 900),
-      value: (seed % 100) / 100,
-    );
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _syncAnimation();
-  }
-
-  @override
-  void didUpdateWidget(covariant CreatureAvatar oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    _syncAnimation();
-  }
-
-  void _syncAnimation() {
-    final reduce = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
-    final shouldRun = widget.animate && !reduce;
-    if (shouldRun && !_controller.isAnimating) {
-      _controller.repeat();
-    } else if (!shouldRun && _controller.isAnimating) {
-      _controller.stop();
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return RepaintBoundary(
-      child: AnimatedBuilder(
-        animation: _controller,
-        builder: (context, child) {
-          final phase = _controller.value;
-          final turn = math.sin(phase * math.pi * 2) * 0.32;
-          final transform = Matrix4.identity()
-            ..setEntry(3, 2, 0.0016)
-            ..rotateY(widget.mirrored ? math.pi + turn : turn);
-          return Transform(
-            alignment: Alignment.center,
-            transform: transform,
-            child: CustomPaint(
-              painter: CreaturePainter(
-                card: widget.card,
-                phase: phase,
-                turn: turn,
-              ),
-              size: Size.infinite,
-            ),
-          );
-        },
+    final reduce = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    final live = animate && !reduce;
+    Widget paint = CustomPaint(
+      painter: CreaturePainter(
+        card: card,
+        clock: live ? CreatureClock.instance : null,
       ),
+      size: Size.infinite,
     );
+    if (mirrored) paint = Transform.flip(flipX: true, child: paint);
+    return RepaintBoundary(child: paint);
   }
 }
 
@@ -256,18 +249,36 @@ Color _darken(Color color, [double amount = 0.15]) {
 }
 
 class CreaturePainter extends CustomPainter {
-  CreaturePainter({
-    required this.card,
-    required this.phase,
-    required this.turn,
-  })  : seed = creatureSeed(card.id),
-        palette = CreaturePalette.of(card.element);
+  CreaturePainter({required this.card, this.clock, double phase = 0.15})
+      : _staticPhase = phase,
+        seed = creatureSeed(card.id),
+        palette = CreaturePalette.of(card.element),
+        super(repaint: clock);
 
   final CardModel card;
-  final double phase;
-  final double turn;
+
+  /// Jam animasi; null = gambar diam pada fase [_staticPhase].
+  final CreatureClock? clock;
+  final double _staticPhase;
   final int seed;
   final CreaturePalette palette;
+
+  /// Durasi satu siklus idle (berbeda tiap kreatur agar tidak serempak).
+  double get _cycle => 2.4 + (seed % 900) / 1000;
+
+  /// Posisi dalam siklus idle, 0..1.
+  double get phase {
+    final c = clock;
+    if (c == null) return _staticPhase;
+    return ((c.seconds + (seed % 1000) / 250) / _cycle) % 1;
+  }
+
+  /// Arah lirikan wajah (-0.32..0.32), lebih lambat dari lompatan.
+  double get turn {
+    final c = clock;
+    final t = c == null ? _staticPhase : c.seconds / (_cycle * 2.3) + seed % 7;
+    return math.sin(t * math.pi * 2) * 0.32;
+  }
 
   static const Color _ink = Color(0xFF1B1530);
 
@@ -291,9 +302,16 @@ class CreaturePainter extends CustomPainter {
     final u = math.min(size.width, size.height * 0.9);
     final cx = size.width / 2;
     final groundY = size.height * 0.86;
-    final bob = _wave;
     final kind = species;
     final hover = kind == CreatureSpecies.sprite;
+    _lineW = (u * 0.013).clamp(1.0, 3.2);
+    // Lompatan kecil: naik (stretch) lalu mendarat (squash).
+    final s = _wave;
+    final air = math.max(0.0, s);
+    final land = math.max(0.0, -s);
+    final heavy =
+        kind == CreatureSpecies.golem || kind == CreatureSpecies.turtle;
+    final bounce = kind == CreatureSpecies.serpent ? 0.0 : (heavy ? 0.45 : 1.0);
 
     final (rxF, ryF) = switch (kind) {
       CreatureSpecies.dino => (0.27, 0.29),
@@ -310,11 +328,12 @@ class CreaturePainter extends CustomPainter {
       CreatureSpecies.sprite => (0.24, 0.27),
       CreatureSpecies.bug => (0.30, 0.25),
     };
-    final squash = kind == CreatureSpecies.golem ? 0.01 : 0.025;
     final grow = 0.9 + 0.04 * _tier;
-    final rx = u * rxF * grow * (1 + squash * bob);
-    final ry = u * ryF * grow * (1 - squash * bob);
-    final lift = hover ? u * (0.12 + 0.04 * bob) : u * 0.07 + bob * u * 0.025;
+    final rx = u * rxF * grow * (1 + bounce * (0.07 * land - 0.03 * air));
+    final ry = u * ryF * grow * (1 + bounce * (0.05 * air - 0.07 * land));
+    final lift = hover
+        ? u * (0.12 + 0.04 * s)
+        : u * 0.07 + bounce * air * air * u * 0.07;
     final baseY = kind == CreatureSpecies.serpent
         ? groundY - u * 0.36
         : groundY - ry - lift;
@@ -329,8 +348,14 @@ class CreaturePainter extends CustomPainter {
       canvas,
       Offset(cx, groundY),
       hover ? rx * 0.7 : rx * (kind == CreatureSpecies.serpent ? 1.6 : 1),
-      bob,
+      hover ? 0.5 : air * bounce,
     );
+
+    // Goyang kiri-kanan dari titik tumpu di tanah.
+    canvas.save();
+    canvas.translate(cx, groundY);
+    canvas.rotate(math.sin(phase * math.pi * 2 * 0.5) * 0.05);
+    canvas.translate(-cx, -groundY);
 
     switch (kind) {
       case CreatureSpecies.dino:
@@ -362,6 +387,7 @@ class CreaturePainter extends CustomPainter {
     }
     _paintElementAccent(canvas, body, u, kind);
     if (_tier >= Rarity.legendary.index) _crown(canvas, body, kind);
+    canvas.restore();
   }
 
   // ------------------------------------------------------------ helpers
@@ -401,22 +427,34 @@ class CreaturePainter extends CustomPainter {
     );
   }
 
-  Paint _shade(Rect r, {Color? light, Color? base, Color? dark}) {
-    return Paint()
-      ..shader = RadialGradient(
-        center: Alignment(-0.35 - turn * 0.6, -0.5),
-        radius: 1.05,
-        colors: <Color>[
-          light ?? palette.light,
-          base ?? palette.base,
-          dark ?? palette.dark,
-        ],
-        stops: const <double>[0, 0.5, 1],
-      ).createShader(r);
+  /// Tebal & warna garis luar ala ilustrasi anime.
+  double _lineW = 1.5;
+  Color get _lineColor => _darken(palette.dark, 0.14);
+
+  /// Cel-shading: isian datar + bayangan sabit kanan-bawah + garis luar.
+  void _celPath(Canvas canvas, Path path, {Color? base, Color? shade}) {
+    final r = path.getBounds();
+    canvas.drawPath(path, Paint()..color = base ?? palette.base);
+    canvas.save();
+    canvas.clipPath(path);
+    final crescent = Path()
+      ..fillType = PathFillType.evenOdd
+      ..addRect(r.inflate(r.longestSide))
+      ..addOval(
+        r
+            .shift(Offset(-r.width * (0.1 + turn * 0.1), -r.height * 0.13))
+            .inflate(r.shortestSide * 0.02),
+      );
+    canvas.drawPath(
+      crescent,
+      Paint()..color = (shade ?? palette.dark).withValues(alpha: 0.3),
+    );
+    canvas.restore();
+    canvas.drawPath(path, _stroke(_lineW, _lineColor));
   }
 
-  void _blob(Canvas canvas, Rect r, {Color? light, Color? base, Color? dark}) {
-    canvas.drawOval(r, _shade(r, light: light, base: base, dark: dark));
+  void _blob(Canvas canvas, Rect r, {Color? base, Color? dark}) {
+    _celPath(canvas, Path()..addOval(r), base: base, shade: dark);
   }
 
   Color get _soft => Color.lerp(palette.light, Colors.white, 0.35)!;
@@ -455,17 +493,18 @@ class CreaturePainter extends CustomPainter {
     canvas.drawOval(
       Rect.fromCenter(
         center: Offset.zero,
-        width: b.width * 0.22,
-        height: b.height * 0.12,
+        width: b.width * 0.18,
+        height: b.height * 0.09,
       ),
-      Paint()
-        ..color = Colors.white.withValues(alpha: 0.55)
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, b.width * 0.025),
+      Paint()..color = Colors.white.withValues(alpha: 0.6),
     );
     canvas.restore();
   }
 
   bool get _blinking => phase > 0.9 && phase < 0.94;
+
+  /// Sesekali tersenyum lebar (mata ^ ^, mulut terbuka).
+  bool get _happy => ((seed >> 7) % 3 != 0) && phase > 0.52 && phase < 0.68;
 
   /// Sepasang mata ala chibi dengan foreshortening saat menoleh.
   void _eyes(
@@ -485,14 +524,23 @@ class CreaturePainter extends CustomPainter {
       if (glow != null) {
         canvas.drawOval(
           eye.inflate(w * 0.25),
-          Paint()
-            ..color = glow.withValues(alpha: 0.45)
-            ..maskFilter = MaskFilter.blur(BlurStyle.normal, w * 0.3),
+          Paint()..color = glow.withValues(alpha: 0.3),
         );
         canvas.drawOval(eye, Paint()..color = glow);
         canvas.drawOval(
           eye.deflate(w * 0.18),
           Paint()..color = Colors.white.withValues(alpha: 0.8),
+        );
+        continue;
+      }
+      if (_happy && !slit) {
+        // Mata senyum ^ ^.
+        canvas.drawPath(
+          Path()
+            ..moveTo(c.dx - w * 0.5 * fore, c.dy + h * 0.12)
+            ..quadraticBezierTo(
+                c.dx, c.dy - h * 0.45, c.dx + w * 0.5 * fore, c.dy + h * 0.12),
+          _stroke(w * 0.26, _ink),
         );
         continue;
       }
@@ -562,6 +610,24 @@ class CreaturePainter extends CustomPainter {
     );
   }
 
+  /// Mulut terbuka tertawa dengan lidah.
+  void _openMouth(Canvas canvas, Offset c, double w) {
+    final mouth = Path()
+      ..moveTo(c.dx - w, c.dy)
+      ..quadraticBezierTo(c.dx, c.dy + w * 1.7, c.dx + w, c.dy)
+      ..close();
+    canvas.drawPath(mouth, Paint()..color = const Color(0xFF7A1F3D));
+    canvas.save();
+    canvas.clipPath(mouth);
+    canvas.drawCircle(
+      Offset(c.dx, c.dy + w * 1.1),
+      w * 0.6,
+      Paint()..color = const Color(0xFFFF7FA0),
+    );
+    canvas.restore();
+    canvas.drawPath(mouth, _stroke(w * 0.18, _ink));
+  }
+
   /// Wajah standar: mata, pipi, mulut.
   void _face(
     Canvas canvas,
@@ -589,7 +655,14 @@ class CreaturePainter extends CustomPainter {
       b.width * (eyeSpread + 0.14),
       b.width * 0.13,
     );
-    if (mouth) _smile(canvas, eyeC + Offset(0, b.height * 0.2), b.width * 0.09);
+    if (mouth) {
+      final m = eyeC + Offset(0, b.height * 0.2);
+      if (_happy) {
+        _openMouth(canvas, m, b.width * 0.1);
+      } else {
+        _smile(canvas, m, b.width * 0.09);
+      }
+    }
   }
 
   void _feet(
@@ -707,8 +780,7 @@ class CreaturePainter extends CustomPainter {
         tailBase.dy + b.height * 0.15,
       )
       ..close();
-    canvas.drawPath(
-        tail, _shade(Rect.fromPoints(tailBase, tip).inflate(b.width * 0.2)));
+    _celPath(canvas, tail);
     if (dragon) {
       canvas.drawPath(
         _triangle(
@@ -898,8 +970,8 @@ class CreaturePainter extends CustomPainter {
         width: b.width * 0.3,
         height: b.height * 0.55,
       );
-      canvas.drawOval(
-          wing, _shade(wing, base: palette.base, dark: palette.dark));
+      _celPath(canvas, Path()..addOval(wing),
+          base: palette.base, shade: palette.dark);
       canvas.drawOval(
         wing.deflate(b.width * 0.04).shift(Offset(0, b.height * 0.08)),
         Paint()..color = palette.accent.withValues(alpha: 0.5),
@@ -1000,8 +1072,7 @@ class CreaturePainter extends CustomPainter {
       width: b.width * 0.34,
       height: b.height * 0.26,
     );
-    canvas.drawOval(snout,
-        _shade(snout, light: Colors.white, base: pink, dark: _darken(pink)));
+    _celPath(canvas, Path()..addOval(snout), base: pink, shade: _darken(pink));
     for (final dir in const <double>[-1, 1]) {
       canvas.drawOval(
         Rect.fromCenter(
@@ -1087,8 +1158,8 @@ class CreaturePainter extends CustomPainter {
         b.center.dx + dir * b.width * 0.3 + turn * b.width * 0.08,
         b.top + b.height * 0.08,
       );
-      canvas.drawCircle(c, b.width * 0.15,
-          _shade(Rect.fromCircle(center: c, radius: b.width * 0.15)));
+      _celPath(canvas,
+          Path()..addOval(Rect.fromCircle(center: c, radius: b.width * 0.15)));
       canvas.drawCircle(c, b.width * 0.08, Paint()..color = _soft);
     }
     _blob(canvas, b);
@@ -1117,7 +1188,7 @@ class CreaturePainter extends CustomPainter {
       canvas.rotate(dir * (0.18 + math.sin(phase * math.pi * 2 + dir) * 0.08));
       final ear = Rect.fromLTWH(
           -b.width * 0.1, -b.height * 0.85, b.width * 0.2, b.height * 0.9);
-      canvas.drawOval(ear, _shade(ear));
+      _celPath(canvas, Path()..addOval(ear));
       canvas.drawOval(
         ear.deflate(b.width * 0.045),
         Paint()..color = const Color(0xFFFFB3C7).withValues(alpha: 0.85),
@@ -1177,14 +1248,13 @@ class CreaturePainter extends CustomPainter {
         b.center.dx + dir * b.width * 0.28 + turn * b.width * 0.08,
         b.top + b.height * 0.16,
       );
-      canvas.drawPath(
-        _triangle(
-          base + Offset(-b.width * 0.12, 0),
-          base + Offset(dir * b.width * 0.06, -b.height * 0.42),
-          base + Offset(b.width * 0.12, 0),
-        ),
-        _shade(Rect.fromCircle(center: base, radius: b.width * 0.3)),
-      );
+      _celPath(
+          canvas,
+          _triangle(
+            base + Offset(-b.width * 0.12, 0),
+            base + Offset(dir * b.width * 0.06, -b.height * 0.42),
+            base + Offset(b.width * 0.12, 0),
+          ));
       canvas.drawPath(
         _triangle(
           base + Offset(-b.width * 0.06, 0),
@@ -1242,13 +1312,8 @@ class CreaturePainter extends CustomPainter {
     final shell =
         Rect.fromLTRB(b.left, b.top, b.right, b.bottom + b.height * 0.1);
     final shellColor = _darken(palette.accent, 0.1);
-    canvas.drawOval(
-      shell,
-      _shade(shell,
-          light: palette.accent,
-          base: shellColor,
-          dark: _darken(shellColor, 0.25)),
-    );
+    _celPath(canvas, Path()..addOval(shell),
+        base: shellColor, shade: _darken(shellColor, 0.25));
     final pattern = _stroke(b.width * 0.02, _darken(shellColor, 0.2));
     final c = shell.center + Offset(turn * b.width * 0.1, -b.height * 0.05);
     final hex = Path();
@@ -1320,26 +1385,20 @@ class CreaturePainter extends CustomPainter {
         width: b.width * 0.3,
         height: b.height * 0.6,
       );
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(arm, Radius.circular(arm.width * 0.4)),
-        _shade(arm,
-            light: Color.lerp(rock, Colors.white, 0.35),
-            base: rock,
-            dark: _darken(rock, 0.25)),
-      );
+      _celPath(
+          canvas,
+          Path()
+            ..addRRect(
+                RRect.fromRectAndRadius(arm, Radius.circular(arm.width * 0.4))),
+          base: rock,
+          shade: _darken(rock, 0.25));
     }
     _feet(canvas, b, spread: 0.25, w: 0.3, h: 0.2, color: _darken(rock, 0.2));
     final rr = RRect.fromRectAndRadius(b, Radius.circular(b.width * 0.28));
-    canvas.drawRRect(
-      rr,
-      _tier >= 2
-          ? _shade(
-              b,
-              light: palette.base,
-              base: _darken(palette.base, 0.2),
-              dark: _darken(palette.dark, 0.15),
-            )
-          : _shade(b),
+    _celPath(
+      canvas,
+      Path()..addRRect(rr),
+      base: _tier >= 2 ? _darken(palette.base, 0.2) : null,
     );
     if (_tier >= 3) {
       // Rune bercahaya.
@@ -1404,12 +1463,8 @@ class CreaturePainter extends CustomPainter {
       final c =
           Offset(b.center.dx + dir * b.width * 0.42, b.top + b.height * 0.15);
       final r = Rect.fromCircle(center: c, radius: b.width * 0.16);
-      canvas.drawOval(
-          r,
-          _shade(r,
-              light: Color.lerp(rock, Colors.white, 0.4),
-              base: rock,
-              dark: _darken(rock, 0.3)));
+      _celPath(canvas, Path()..addOval(r),
+          base: rock, shade: _darken(rock, 0.3));
     }
     final fx = b.width * _faceShift;
     final eyeC = Offset(b.center.dx + fx, b.center.dy - b.height * 0.1);
@@ -1439,7 +1494,7 @@ class CreaturePainter extends CustomPainter {
         width: w,
         height: h,
       );
-      canvas.drawOval(r, _shade(r));
+      _celPath(canvas, Path()..addOval(r));
       canvas.drawArc(
         r.deflate(h * 0.15),
         0.3,
@@ -1512,7 +1567,7 @@ class CreaturePainter extends CustomPainter {
           b.center.dx + turn * b.width * 0.2,
           b.top - b.height * 0.25)
       ..close();
-    canvas.drawPath(drop, _shade(b.inflate(b.width * 0.1)));
+    _celPath(canvas, drop);
     _face(canvas, b, eyeY: 0.02, eyeSpread: 0.18, eyeW: 0.15, eyeH: 0.28);
     if (_tier >= 1) {
       const petals = <Color>[
@@ -1757,9 +1812,7 @@ class CreaturePainter extends CustomPainter {
       canvas.drawCircle(
         pos,
         r * 2,
-        Paint()
-          ..color = palette.accent.withValues(alpha: 0.35)
-          ..maskFilter = MaskFilter.blur(BlurStyle.normal, r),
+        Paint()..color = palette.accent.withValues(alpha: 0.3),
       );
       canvas.drawCircle(pos, r, Paint()..color = palette.light);
     }
@@ -1767,13 +1820,16 @@ class CreaturePainter extends CustomPainter {
 
   void _paintAura(Canvas canvas, Rect body, double u) {
     final color = AppTheme.rarityColor(card.rarity);
-    final pulse = 0.85 + 0.15 * math.sin(phase * math.pi * 4);
+    final pulse = 0.92 + 0.08 * math.sin(phase * math.pi * 4);
     canvas.drawCircle(
       body.center,
-      body.width * 0.9 * pulse,
-      Paint()
-        ..color = color.withValues(alpha: 0.28)
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, body.width * 0.2),
+      body.width * 0.86 * pulse,
+      Paint()..color = color.withValues(alpha: 0.16),
+    );
+    canvas.drawCircle(
+      body.center,
+      body.width * 0.86 * pulse,
+      _stroke(u * 0.008, color.withValues(alpha: 0.45)),
     );
     if (card.rarity.index >= Rarity.legendary.index) {
       final sparkle = Paint()..color = Colors.white.withValues(alpha: 0.9);
@@ -1786,19 +1842,16 @@ class CreaturePainter extends CustomPainter {
     }
   }
 
-  void _paintShadow(Canvas canvas, Offset ground, double rx, double bob) {
-    // Bayangan clay: elips solid yang dikaburkan, tepat di bawah kaki.
-    final w = rx * 1.6 * (1 - 0.08 * bob);
-    final rect = Rect.fromCenter(
-      center: ground.translate(0, -rx * 0.18),
-      width: w,
-      height: w * 0.24,
-    );
+  void _paintShadow(Canvas canvas, Offset ground, double rx, double air) {
+    // Bayangan datar ala ilustrasi; mengecil saat kreatur melompat.
+    final w = rx * 1.6 * (1 - 0.25 * air);
     canvas.drawOval(
-      rect,
-      Paint()
-        ..color = Colors.black.withValues(alpha: 0.18 - 0.03 * bob)
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, w * 0.05),
+      Rect.fromCenter(
+        center: ground.translate(0, -rx * 0.18),
+        width: w,
+        height: w * 0.22,
+      ),
+      Paint()..color = Colors.black.withValues(alpha: 0.13 - 0.04 * air),
     );
   }
 
@@ -1841,14 +1894,8 @@ class CreaturePainter extends CustomPainter {
     // Glow.
     canvas.drawCircle(
       center,
-      u * 0.42,
-      Paint()
-        ..shader = RadialGradient(
-          colors: <Color>[
-            color.withValues(alpha: 0.55),
-            color.withValues(alpha: 0)
-          ],
-        ).createShader(Rect.fromCircle(center: center, radius: u * 0.42)),
+      u * 0.34,
+      Paint()..color = color.withValues(alpha: 0.22),
     );
 
     // Kristal berfaset; faset kiri/kanan bertukar terang saat berputar.
@@ -1886,9 +1933,10 @@ class CreaturePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CreaturePainter oldDelegate) =>
-      oldDelegate.phase != phase ||
       oldDelegate.card.id != card.id ||
-      oldDelegate.turn != turn;
+      oldDelegate.card.rarity != card.rarity ||
+      oldDelegate.clock != clock ||
+      (clock == null && oldDelegate._staticPhase != _staticPhase);
 }
 
 /// Panggung clay + kreatur: latar pastel polos dan lantai bundar solid.
@@ -1907,129 +1955,22 @@ class CreatureScene extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final modelKey = CreatureModels.keyOf(card);
     return ColoredBox(
       color: AppTheme.elementPastel(card.element),
       child: CustomPaint(
         painter: _StagePainter(
           AppTheme.elementColor(card.element),
-          aura: card.rarity.isRarePlus
-              ? AppTheme.rarityColor(card.rarity)
-              : null,
+          aura:
+              card.rarity.isRarePlus ? AppTheme.rarityColor(card.rarity) : null,
         ),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(4, 8, 4, 0),
-          child: modelKey == null
-              ? CreatureAvatar(card: card, animate: animate, mirrored: mirrored)
-              : ModelCreature(
-                  modelKey: modelKey,
-                  seed: creatureSeed(card.id),
-                  animate: animate,
-                  mirrored: mirrored,
-                  fallback: CreatureAvatar(
-                    card: card,
-                    animate: animate,
-                    mirrored: mirrored,
-                  ),
-                ),
+          child: CreatureAvatar(
+            card: card,
+            animate: animate,
+            mirrored: mirrored,
+          ),
         ),
-      ),
-    );
-  }
-}
-
-/// Render model 3D (foto diam dari GLB) dengan animasi idle ringan:
-/// bernapas, sedikit mengayun, dan bisa dicerminkan untuk sisi lawan.
-class ModelCreature extends StatefulWidget {
-  const ModelCreature({
-    super.key,
-    required this.modelKey,
-    this.seed = 0,
-    this.animate = true,
-    this.mirrored = false,
-    this.fallback,
-  });
-
-  final String modelKey;
-  final int seed;
-  final bool animate;
-  final bool mirrored;
-
-  /// Ditampilkan bila aset gambar gagal dimuat.
-  final Widget? fallback;
-
-  @override
-  State<ModelCreature> createState() => _ModelCreatureState();
-}
-
-class _ModelCreatureState extends State<ModelCreature>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: Duration(milliseconds: 2400 + widget.seed % 800),
-    value: (widget.seed % 100) / 100,
-  );
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _sync();
-  }
-
-  @override
-  void didUpdateWidget(covariant ModelCreature oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    _sync();
-  }
-
-  void _sync() {
-    final reduce = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
-    final run = widget.animate && !reduce;
-    if (run && !_controller.isAnimating) {
-      _controller.repeat();
-    } else if (!run && _controller.isAnimating) {
-      _controller.stop();
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final image = Image.asset(
-      CreatureModels.imageAsset(widget.modelKey),
-      fit: BoxFit.contain,
-      gaplessPlayback: true,
-      filterQuality: FilterQuality.medium,
-      errorBuilder: (context, error, stack) =>
-          widget.fallback ?? const SizedBox.shrink(),
-    );
-    return RepaintBoundary(
-      child: AnimatedBuilder(
-        animation: _controller,
-        child: image,
-        builder: (context, child) {
-          final t = _controller.value * math.pi * 2;
-          final breathe = math.sin(t) * 0.025;
-          final transform = Matrix4.identity()
-            ..translateByDouble(0, -math.sin(t) * 2.5, 0, 1)
-            ..rotateZ(math.sin(t * 0.5) * 0.025)
-            ..scaleByDouble(
-              (widget.mirrored ? -1 : 1) * (1 - breathe * 0.4),
-              1 + breathe,
-              1,
-              1,
-            );
-          return Transform(
-            alignment: Alignment.bottomCenter,
-            transform: transform,
-            child: child,
-          );
-        },
       ),
     );
   }

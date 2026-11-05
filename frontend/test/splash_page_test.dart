@@ -1,4 +1,5 @@
 import 'package:dokimon/core/i18n/app_strings.dart';
+import 'package:dokimon/core/ui/creature_avatar.dart';
 import 'package:dokimon/features/shell/splash_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,7 +19,7 @@ void main() {
     await tester.pumpWidget(
       _host(
         SplashPage(
-          assets: const <String>[],
+          warmup: const [],
           minDuration: const Duration(milliseconds: 800),
           onLoaded: () => loaded++,
         ),
@@ -40,11 +41,12 @@ void main() {
     expect(loaded, 1);
   });
 
-  test('aset splash mencakup semua ilustrasi monster', () {
-    final assets = defaultSplashAssets();
-    expect(assets, isNotEmpty);
-    expect(assets.toSet().length, assets.length);
-    expect(assets.every((a) => a.startsWith('assets/creatures/')), isTrue);
+  test('pemanasan mencakup semua spesies kreatur', () {
+    final warmup = defaultSplashWarmup();
+    expect(
+      warmup.map(speciesOf).toSet(),
+      CreatureSpecies.values.toSet(),
+    );
   });
 
   test('teks splash tersedia di id dan en', () {

@@ -153,6 +153,21 @@ class _ClayInsetPainter extends BoxPainter {
   void paint(Canvas canvas, Offset offset, ImageConfiguration configuration) {
     final size = configuration.size;
     if (size == null || size.isEmpty || decoration.depth == 0) return;
+    // Elemen kecil (pil, lencana): inner shadow ber-blur hampir tak terlihat
+    // tapi mahal; cukup satu garis sorot tipis tanpa blur.
+    if (size.shortestSide < 34) {
+      final r = offset & size;
+      final radius = decoration.radius ?? size.shortestSide / 2;
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(r.deflate(1), Radius.circular(radius)),
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1
+          ..color =
+              Colors.white.withValues(alpha: decoration.pressed ? 0.25 : 0.4),
+      );
+      return;
+    }
     final rect = offset & size;
     final radius = decoration.radius ?? size.shortestSide / 2;
     final rrect = RRect.fromRectAndRadius(rect, Radius.circular(radius));

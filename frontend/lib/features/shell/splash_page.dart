@@ -1,37 +1,65 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
 import '../../core/i18n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/ui/widgets.dart';
+import '../../domain/models/card_model.dart';
 
 /// Lama minimum splash agar tidak sekadar berkedip saat sesi pulih seketika.
 const Duration kMinSplashDuration = Duration(milliseconds: 1600);
 
-/// Aset yang dimuat ke memori selama splash agar kartu langsung tampil.
-List<String> defaultSplashAssets() => <String>{
-      ...CreatureModels.byCardId.values,
-      ...CreatureModels.bySpecies.values,
-    }.map(CreatureModels.imageAsset).toList(growable: false);
+/// Satu kreatur per spesies (dan per elemen) untuk memanaskan painter.
+List<CardModel> defaultSplashWarmup() {
+  const elements = CardElement.values;
+  return <CardModel>[
+    for (final (i, species) in CreatureSpecies.values.indexed)
+      mascotCard(
+        'warm_${species.name}',
+        elements[i % elements.length],
+        name: _speciesSample[species]!,
+        rarity: Rarity.values[i % Rarity.values.length],
+      ),
+  ];
+}
 
-/// Splash dengan loading sungguhan: memuat ilustrasi monster sambil
-/// menampilkan progres bertahap, lalu memanggil [onLoaded].
+/// Nama contoh yang dipetakan ke tiap spesies oleh [speciesOf].
+const Map<CreatureSpecies, String> _speciesSample = <CreatureSpecies, String>{
+  CreatureSpecies.dino: 'Rex',
+  CreatureSpecies.dragon: 'Drake',
+  CreatureSpecies.bird: 'Bird',
+  CreatureSpecies.pig: 'Pig',
+  CreatureSpecies.dog: 'Pup',
+  CreatureSpecies.bear: 'Bear',
+  CreatureSpecies.bunny: 'Hare',
+  CreatureSpecies.cat: 'Cat',
+  CreatureSpecies.turtle: 'Turtle',
+  CreatureSpecies.golem: 'Golem',
+  CreatureSpecies.serpent: 'Serpent',
+  CreatureSpecies.sprite: 'Sprite',
+  CreatureSpecies.bug: 'Mite',
+};
+
+/// Splash dengan loading sungguhan: menggambar tiap spesies sekali di luar
+/// layar (memanaskan painter & shader) sambil menampilkan progres bertahap,
+/// lalu memanggil [onLoaded].
 class SplashPage extends StatefulWidget {
   const SplashPage({
     super.key,
     this.onLoaded,
     this.minDuration = kMinSplashDuration,
-    this.assets,
+    this.warmup,
   });
 
-  /// Dipanggil sekali setelah semua aset termuat dan durasi minimum lewat.
+  /// Dipanggil sekali setelah pemanasan selesai dan durasi minimum lewat.
   final VoidCallback? onLoaded;
   final Duration minDuration;
 
-  /// Aset untuk dimuat (null = [defaultSplashAssets]).
-  final List<String>? assets;
+  /// Kreatur untuk dipanaskan (null = [defaultSplashWarmup]).
+  final List<CardModel>? warmup;
 
   @override
   State<SplashPage> createState() => _SplashPageState();
@@ -49,10 +77,14 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
     duration: widget.minDuration,
   );
 
-  static const List<String> _mascots = <String>['birb', 'dino', 'pig'];
+  static final List<CardModel> _mascots = <CardModel>[
+    mascotCard('card_016', CardElement.air, name: 'Stormclaw Griffon'),
+    mascotCard('card_022', CardElement.water, name: 'Glacier Titan'),
+    mascotCard('card_006', CardElement.fire, name: 'Cinderling'),
+  ];
   static const int _tipCount = 3;
 
-  late final List<String> _assets = widget.assets ?? defaultSplashAssets();
+  late final List<CardModel> _assets = widget.warmup ?? defaultSplashWarmup();
   int _loaded = 0;
   bool _started = false;
   bool _notified = false;
@@ -84,19 +116,18 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
   }
 
   Future<void> _preload() async {
-    for (final path in _assets) {
+    for (final card in _assets) {
       if (!mounted) return;
       try {
-        await precacheImage(AssetImage(path), context);
+        await _warm(card);
       } on Object catch (error, stack) {
-        // Gambar gagal dimuat tidak boleh menahan pemain di splash;
-        // kartu tetap punya karakter cadangan.
+        // Pemanasan gagal tidak boleh menahan pemain di splash.
         FlutterError.reportError(
           FlutterErrorDetails(
             exception: error,
             stack: stack,
             library: 'dokimon splash',
-            context: ErrorDescription('memuat $path'),
+            context: ErrorDescription('memanaskan ${card.name}'),
           ),
         );
       }
@@ -105,6 +136,22 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
       _checkDone();
     }
     _checkDone();
+  }
+
+  /// Gambar kreatur sekali ke gambar di luar layar.
+  Future<void> _warm(CardModel card) async {
+    const size = Size(96, 96);
+    final recorder = ui.PictureRecorder();
+    CreaturePainter(card: card).paint(Canvas(recorder), size);
+    final picture = recorder.endRecording();
+    final image = await picture.toImage(
+      size.width.toInt(),
+      size.height.toInt(),
+    );
+    image.dispose();
+    picture.dispose();
+    // Beri jeda satu frame agar animasi splash tetap mulus.
+    await Future<void>.delayed(const Duration(milliseconds: 16));
   }
 
   void _checkDone() {
@@ -192,7 +239,7 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: <Widget>[
-                      for (final (index, key) in _mascots.indexed)
+                      for (final (index, card) in _mascots.indexed)
                         ScaleTransition(
                           scale: _interval(
                             0.3 + index * 0.12,
@@ -202,9 +249,8 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                           child: SizedBox(
                             width: index == 1 ? 116 : 88,
                             height: index == 1 ? 116 : 88,
-                            child: ModelCreature(
-                              modelKey: key,
-                              seed: index * 811,
+                            child: CreatureAvatar(
+                              card: card,
                               mirrored: index == 2,
                             ),
                           ),

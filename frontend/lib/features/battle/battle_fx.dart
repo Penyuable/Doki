@@ -741,17 +741,13 @@ class _ImpactFx extends _Fx {
     // Kilat inti.
     if (t < 0.35) {
       final f = 1 - t / 0.35;
+      final r = radius * (0.4 + 0.5 * (1 - f));
+      canvas.drawCircle(
+          center, r, Paint()..color = color.withValues(alpha: 0.6 * f));
       canvas.drawCircle(
         center,
-        radius * (0.4 + 0.5 * (1 - f)),
-        Paint()
-          ..shader = RadialGradient(
-            colors: <Color>[
-              Colors.white.withValues(alpha: 0.95 * f),
-              color.withValues(alpha: 0.7 * f),
-              color.withValues(alpha: 0),
-            ],
-          ).createShader(Rect.fromCircle(center: center, radius: radius)),
+        r * 0.55,
+        Paint()..color = Colors.white.withValues(alpha: 0.95 * f),
       );
     }
     // Gelombang kejut.
@@ -849,17 +845,8 @@ class _BoltFx extends _Fx {
         Paint()..color = color.withValues(alpha: 0.5 * (1 - i / 9)),
       );
     }
-    canvas.drawCircle(
-      head,
-      18,
-      Paint()
-        ..shader = RadialGradient(
-          colors: <Color>[
-            color.withValues(alpha: 0.75),
-            color.withValues(alpha: 0)
-          ],
-        ).createShader(Rect.fromCircle(center: head, radius: 18)),
-    );
+    canvas.drawCircle(head, 16, Paint()..color = color.withValues(alpha: 0.35));
+    canvas.drawCircle(head, 11, Paint()..color = color);
     canvas.drawCircle(head, 6.5, Paint()..color = Colors.white);
   }
 }
@@ -1074,17 +1061,9 @@ class _SummonFx extends _Fx {
       rect.right - rect.width * 0.2,
       base.dy,
     );
-    canvas.drawRect(
-      pillar,
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.bottomCenter,
-          end: Alignment.topCenter,
-          colors: <Color>[
-            color.withValues(alpha: 0.45 * fade),
-            color.withValues(alpha: 0)
-          ],
-        ).createShader(pillar),
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(pillar, Radius.circular(pillar.width / 2)),
+      Paint()..color = color.withValues(alpha: 0.28 * fade),
     );
     final dot = Paint()..color = Colors.white.withValues(alpha: fade);
     for (var i = 0; i < _xs.length; i++) {

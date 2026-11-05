@@ -40,4 +40,3 @@ flutter:
   uses-material-design: true
   assets:
     - assets/cards/cards.seed.json
-    - assets/creatures/

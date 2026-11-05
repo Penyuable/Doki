@@ -423,21 +423,11 @@ class _Tag extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppTheme.ink.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppTheme.ink.withValues(alpha: 0.1)),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          fontSize: 10.5,
-          fontWeight: FontWeight.w600,
-          color: AppTheme.inkSoft,
-        ),
-      ),
+    return ClayPill(
+      label: label,
+      color: AppTheme.surfaceHigh,
+      foreground: AppTheme.inkSoft,
+      fontSize: 10.5,
     );
   }
 }

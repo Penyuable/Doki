@@ -6,53 +6,79 @@ import '../../core/i18n/app_strings.dart';
 import '../../core/storage/app_storage.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/ui/widgets.dart';
+import '../../domain/models/card_model.dart';
 
 class _Step {
   const _Step({
     required this.key,
     required this.color,
     required this.icon,
-    this.model,
+    required this.mascot,
   });
 
   final String key;
   final Color color;
   final IconData icon;
 
-  /// Kunci model 3D untuk ilustrasi (opsional).
-  final String? model;
+  /// Maskot chibi untuk ilustrasi langkah.
+  final CardModel mascot;
 }
 
-const List<_Step> _steps = <_Step>[
+final List<_Step> _steps = <_Step>[
   _Step(
     key: 'collect',
     color: AppTheme.accent,
     icon: Icons.auto_awesome_rounded,
-    model: 'dino',
+    mascot: mascotCard(
+      'card_022',
+      CardElement.water,
+      name: 'Glacier Titan',
+      rarity: Rarity.rare,
+    ),
   ),
   _Step(
     key: 'deck',
     color: AppTheme.primary,
     icon: Icons.style_rounded,
-    model: 'shiba',
+    mascot: mascotCard(
+      'card_001',
+      CardElement.fire,
+      name: 'Ember Pup',
+      rarity: Rarity.common,
+    ),
   ),
   _Step(
     key: 'summon',
     color: AppTheme.warning,
     icon: Icons.bolt_rounded,
-    model: 'pig',
+    mascot: mascotCard(
+      'card_006',
+      CardElement.fire,
+      name: 'Cinderling',
+      rarity: Rarity.common,
+    ),
   ),
   _Step(
     key: 'moves',
     color: AppTheme.attack,
     icon: Icons.sports_martial_arts_rounded,
-    model: 'dragon_evolved',
+    mascot: mascotCard(
+      'card_025',
+      CardElement.fire,
+      name: 'Ignis Drake',
+      rarity: Rarity.epic,
+    ),
   ),
   _Step(
     key: 'win',
     color: AppTheme.success,
     icon: Icons.emoji_events_rounded,
-    model: 'alpaking',
+    mascot: mascotCard(
+      'card_024',
+      CardElement.air,
+      name: 'Tempest Sovereign',
+      rarity: Rarity.legendary,
+    ),
   ),
 ];
 
@@ -178,16 +204,12 @@ class _HowToPlaySheetState extends State<_HowToPlaySheet> {
                             radius: 32,
                             child: Stack(
                               children: <Widget>[
-                                if (step.model != null)
-                                  Positioned.fill(
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(18),
-                                      child: ModelCreature(
-                                        modelKey: step.model!,
-                                        seed: i * 977,
-                                      ),
-                                    ),
+                                Positioned.fill(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(18),
+                                    child: CreatureAvatar(card: step.mascot),
                                   ),
+                                ),
                                 Positioned(
                                   top: 14,
                                   left: 14,

@@ -126,4 +126,28 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('jam animasi bersama hanya berjalan saat ada kreatur hidup', (
+    tester,
+  ) async {
+    final clock = CreatureClock.instance;
+    final card = testUnit('card_clock', name: 'Pup');
+
+    await tester.pumpWidget(
+        _host(SizedBox(height: 120, child: CreatureAvatar(card: card))));
+    expect(clock.isRunning, isTrue);
+    final before = clock.seconds;
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(clock.seconds, greaterThan(before));
+
+    await tester.pumpWidget(_host(const SizedBox()));
+    expect(clock.isRunning, isFalse);
+
+    // Kreatur diam (animate: false) tidak menyalakan jam.
+    await tester.pumpWidget(
+      _host(SizedBox(
+          height: 120, child: CreatureAvatar(card: card, animate: false))),
+    );
+    expect(clock.isRunning, isFalse);
+  });
 }

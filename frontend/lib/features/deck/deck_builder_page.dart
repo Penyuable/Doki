@@ -555,22 +555,7 @@ class _Counter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = good ? AppTheme.success : AppTheme.warning;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.35)),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 10.5,
-          fontWeight: FontWeight.w700,
-          color: color,
-        ),
-      ),
-    );
+    return ClayPill(label: label, color: color, fontSize: 10.5);
   }
 }
 

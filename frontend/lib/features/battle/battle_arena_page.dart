@@ -1607,24 +1607,28 @@ class _RewardRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return Clay(
+      radius: 18,
+      depth: 0.5,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
       child: Row(
         children: <Widget>[
-          Icon(icon, size: 18, color: color),
+          Clay(
+            width: 30,
+            height: 30,
+            shape: BoxShape.circle,
+            color: color,
+            depth: 0.4,
+            child: Icon(icon, size: 16, color: Colors.white),
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               label,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w800,
-                color: color,
+                color: AppTheme.ink,
               ),
             ),
           ),

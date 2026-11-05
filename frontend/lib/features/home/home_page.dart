@@ -5,6 +5,7 @@ import '../../core/config/game_config.dart';
 import '../../core/i18n/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/ui/widgets.dart';
+import '../../domain/models/card_model.dart';
 import '../../domain/models/inventory_model.dart';
 import '../auth/auth_cubit.dart';
 import '../battle/battle_setup_page.dart';
@@ -392,6 +393,13 @@ class _QuickAction extends StatelessWidget {
 class _BattleHero extends StatelessWidget {
   const _BattleHero({required this.onTap});
 
+  static final CardModel _heroMascot = mascotCard(
+    'card_025',
+    CardElement.fire,
+    name: 'Ignis Drake',
+    rarity: Rarity.legendary,
+  );
+
   final VoidCallback onTap;
 
   @override
@@ -411,9 +419,9 @@ class _BattleHero extends StatelessWidget {
                 Text(
                   strings.t('home.heroTitle'),
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                  ),
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                      ),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -430,10 +438,10 @@ class _BattleHero extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(
+          SizedBox(
             width: 120,
             height: 120,
-            child: ModelCreature(modelKey: 'dragon_evolved', seed: 7),
+            child: CreatureAvatar(card: _heroMascot),
           ),
         ],
       ),

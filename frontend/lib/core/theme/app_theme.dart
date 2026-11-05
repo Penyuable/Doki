@@ -226,6 +226,28 @@ abstract final class AppTheme {
         linearTrackColor: surfaceHigh,
         circularTrackColor: surfaceHigh,
       ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          shape: WidgetStateProperty.all(const StadiumBorder()),
+          side: WidgetStateProperty.all(BorderSide.none),
+          minimumSize: WidgetStateProperty.all(const Size(44, 46)),
+          backgroundColor: WidgetStateProperty.resolveWith(
+            (states) =>
+                states.contains(WidgetState.selected) ? primary : surfaceHigh,
+          ),
+          foregroundColor: WidgetStateProperty.resolveWith(
+            (states) =>
+                states.contains(WidgetState.selected) ? Colors.white : inkSoft,
+          ),
+          iconColor: WidgetStateProperty.resolveWith(
+            (states) =>
+                states.contains(WidgetState.selected) ? Colors.white : inkSoft,
+          ),
+          textStyle: WidgetStateProperty.all(
+            const TextStyle(fontWeight: FontWeight.w800),
+          ),
+        ),
+      ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.all(Colors.white),
         trackColor: WidgetStateProperty.resolveWith(
