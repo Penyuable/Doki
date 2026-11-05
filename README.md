@@ -161,6 +161,15 @@ Karakter kartu adalah chibi yang **digambar dengan kode** (`frontend/lib/core/ui
 Semua kreatur memakai satu jam animasi bersama (`CreatureClock`, ±30 fps) yang hanya
 berjalan selama ada kreatur di layar, dan berhenti total bila "Kurangi animasi" aktif.
 
+### Unduh aplikasi iOS (.ipa)
+
+**[⬇️ Unduh dokimon-unsigned.ipa](https://github.com/Penyuable/Doki/releases/download/ios-latest/dokimon-unsigned.ipa)**
+· [halaman release](https://github.com/Penyuable/Doki/releases/tag/ios-latest)
+
+File ini diperbarui otomatis oleh GitHub Actions setiap ada push ke `main` yang mengubah `frontend/`.
+IPA **belum ditandatangani**: pasang ke iPhone dari Windows/Mac dengan **Sideloadly** atau **AltStore**
+memakai Apple ID (Apple ID gratis: app harus ditandatangani ulang tiap 7 hari).
+
 ### Build iOS
 
 iOS **tidak bisa** di-build dari Windows — butuh macOS + Xcode. Dua jalur:
@@ -169,16 +178,15 @@ iOS **tidak bisa** di-build dari Windows — butuh macOS + Xcode. Dua jalur:
    (root repo), berisi workflow `ios-unsigned` (IPA) dan `android-release` (APK & AAB).
    Penyiapan sekali saja:
    - Masuk ke https://codemagic.io dengan akun GitHub.
-   - *Add application* → pilih repo `Penyuable/Dokimon` → tipe **Flutter App (via codemagic.yaml)**.
+   - *Add application* → pilih repo `Penyuable/Doki` → tipe **Flutter App (via codemagic.yaml)**.
    - *Start new build* → pilih branch dan workflow `ios-unsigned`.
    - Setelah selesai, unduh `dokimon-unsigned.ipa` dari halaman build (*Artifacts*).
    Build berikutnya berjalan otomatis setiap push ke `main` atau `feat/*`.
-1. **GitHub Actions (tanpa Mac):** workflow `.github/workflows/ios-build.yml` berjalan
+2. **GitHub Actions (tanpa Mac):** workflow `.github/workflows/ios-build.yml` berjalan
    otomatis saat push ke `main` (atau manual lewat tab *Actions → iOS build → Run workflow*).
-   Hasilnya artifact `dokimon-ios-unsigned` berisi `dokimon-unsigned.ipa`.
-   Pasang ke iPhone dari Windows dengan **Sideloadly** atau **AltStore** memakai Apple ID
-   (Apple ID gratis: app harus ditandatangani ulang tiap 7 hari).
-2. **Mac + Xcode:**
+   Hasilnya artifact `dokimon-ios-unsigned` berisi `dokimon-unsigned.ipa`; build dari `main`
+   juga diterbitkan ke release `ios-latest` (link unduhan di atas).
+3. **Mac + Xcode:**
 
 ```bash
 cd frontend
